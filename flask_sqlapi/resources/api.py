@@ -29,6 +29,7 @@ class Api(object):
 
         class Meta(object):
             model = declarative
+            include_fk = True
 
         schema_class_name = '{}Schema'.format(declarative.__name__)
         schema_class = type(
