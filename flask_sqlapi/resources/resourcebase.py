@@ -1,8 +1,8 @@
 import json
 from contextlib import contextmanager
 
-from flasgger import swag_from
-from flask_allows import Permission
+# from flasgger import swag_from
+# from flask_allows import Permission
 from flask_restful import Resource, request
 from .utils import load_request_data, query_from_request, split_nested, DataJSONEncoder
 from .docgeneration import gen_spec
@@ -43,16 +43,13 @@ def expose_resource(url, resource, tags, entity_fields=None):
     api.add_resource(_ResourceItemClass, url + '/<id>', endpoint=resource.__tablename__)
 
 
-
-
-
 def create_resource_api(resource, url, *args, **kw):
     import warnings
     warnings.warn("Deprecated: use expose_resource instead", DeprecationWarning)
     expose_resource(url, resource, *args, **kw)
 
 
-def resource_collection_factory(resource_model):
+def resource_collection_factory(resource_model, serializer, db_session):
     """
     This function creates a class to define a flask-restful resource for Get collection and post method
     from a sqlalchemy resource model with the given resource tags used to verify authorization access.
@@ -84,36 +81,35 @@ def resource_collection_factory(resource_model):
         CREATE over data of that class
         """
         _resource_model = resource_model
+        _serializer = serializer
         _resource_tags = None
 
         # @auth_token_required
-        @swag_from(get_specs_dict)
+        # @swag_from(get_specs_dict)
         def get(self):
             with Permission(CanRead(self._resource_tags)):
                 collection = []
                 data = query_from_request(self._resource_model, request)
-                for obj in data:
-                    collection.append(DataJSONEncoder.to_dict(obj))
+                for item in data:
+                    collection.append(self._serializer.dump(item).data)
                 return collection
 
         # @auth_token_required
-        @swag_from(post_specs_dict)
+        # @swag_from(post_specs_dict)
         def post(self):
             with Permission(CanWrite(self._resource_tags)):
                 args = load_request_data(request)
                 args, nested_args = split_nested(args)
-                data = self._resource_model(**args)
-                for key, value in nested_args.items():
-                    if key in data.__mapper__.relationships:
-                        setattr(data, key, data.__mapper__.relationships[key].argument(**value))
-                db.session.add(data)
-                db.session.commit()
-                return data, 201
+                obj = self._serializer.load(args, session=db_session).data
+                db_session.add(obj)
+                db_session.commit()
+                serialized = self._serializer.dump(obj).data
+                return serialized, 201
 
     return _ResourceCollection
 
 
-def resource_item_factory(resource_model):
+def resource_item_factory(resource_model, serializer, db_session):
     """
     This function creates a class to define a flask-restful resource for GET, PUT, and DELETE methods over an item
     from a sqlalchemy resource model with the given resource tags used to verify authorization access.
@@ -145,19 +141,19 @@ def resource_item_factory(resource_model):
         """
         _resource_model = resource_model
         _resource_tags = None
-        # _entity_fields = entity_fields
+        _serializer = serializer
 
         # @auth_token_required
-        @swag_from(get_specs_dict)
+        # @swag_from(get_specs_dict)
         def get(self, id):
             with Permission(CanRead(self._resource_tags)):
                 data = self._resource_model.query.filter_by(id=id).first()
                 if data:
-                    return DataJSONEncoder.to_dict(data)
+                    return self._serializer.dump(data).data
                 return '', 404
 
         # @auth_token_required
-        @swag_from(put_specs_dict)
+        # @swag_from(put_specs_dict)
         def put(self, id):
             with Permission(CanWrite(self._resource_tags)):
                 data = self._resource_model.query.filter_by(id=id).first()
@@ -169,19 +165,19 @@ def resource_item_factory(resource_model):
                             setattr(data, key, data.__mapper__.relationships[key].argument(**value))
                     for k in args.keys():
                         setattr(data, k, args[k])
-                    db.session.add(data)
-                    db.session.commit()
-                    return data
+                    db_session.add(data)
+                    db_session.commit()
+                    return self._serializer.dump(data).data
                 return '', 404
 
         # @auth_token_required
-        @swag_from(del_specs_dict)
+        # @swag_from(del_specs_dict)
         def delete(self, id):
             with Permission(CanWrite(self._resource_tags)):
                 data = self._resource_model.query.filter_by(id=id).first()
                 if data:
-                    db.session.delete(data)
-                    db.session.commit()
+                    db_session.delete(data)
+                    db_session.commit()
                     return '', 204
                 return '', 404
 

@@ -2,9 +2,10 @@ import json
 
 import pytest
 from flask import Flask
-from flask_sqlapi.resources import Api
+from marshmallow import fields
+from marshmallow_sqlalchemy import ModelSchema
 
-from flask_sqlapi.resources.resourcebase import resource_collection_factory, resource_item_factory
+from flask_sqlapi.resources import Api
 from flask_sqlapi.tests.sample_model import Employee, db
 
 
@@ -20,7 +21,15 @@ def flask_app():
 @pytest.fixture(scope="session")
 def sample_api(flask_app):
     api = Api(flask_app)
-    api.add_model(Employee)
+
+    class EmployeeSerializer(ModelSchema):
+        class Meta:
+            model = Employee
+
+        password = fields.Str(load_only=True)
+        created_at = fields.DateTime(dump_only=True)
+
+    api.add_model(Employee, serializer=EmployeeSerializer())
     return api
 
 
@@ -49,8 +58,8 @@ def test_client(flask_app):
 
 @pytest.fixture(autouse=True)
 def register_model_and_api(db_session, sample_api):
-    emp1 = Employee(id=1, firstname='Odete', lastname='Roithmann')
-    emp2 = Employee(id=2, firstname='Eduardo', lastname='Figueroa')
+    emp1 = Employee(id=1, firstname='Jim', lastname='Raynor')
+    emp2 = Employee(id=2, firstname='Sarah', lastname='Kerrigan')
     db_session.add(emp1)
     db_session.add(emp2)
     db_session.commit()
@@ -60,8 +69,11 @@ def test_get(test_client):
     resp = test_client.get('/employee/1')
     assert resp.status_code == 200
     expected_employee = Employee.query.get(1)
-    assert resp.parsed_data['firstname'] == expected_employee.firstname
-    assert resp.parsed_data['lastname'] == expected_employee.lastname
+    serialized = resp.parsed_data
+    assert serialized['firstname'] == expected_employee.firstname
+    assert serialized['lastname'] == expected_employee.lastname
+    assert serialized['created_at'] == '2000-01-01T00:00:00+00:00'
+    assert 'password' not in serialized
 
 
 # noinspection PyShadowingNames
@@ -70,5 +82,26 @@ def test_get_collection(test_client):
     assert resp.status_code == 200
     assert len(resp.parsed_data) == 2
     for i, expected_employee in enumerate(Employee.query.all()):
-        assert resp.parsed_data[i]['firstname'] == expected_employee.firstname
-        assert resp.parsed_data[i]['lastname'] == expected_employee.lastname
+        serialized = resp.parsed_data[i]
+        assert serialized['firstname'] == expected_employee.firstname
+        assert serialized['lastname'] == expected_employee.lastname
+        assert 'password' not in serialized
+
+
+def test_post(test_client):
+    resp = test_client.post('/employee', data={'id': 3, 'firstname': 'Tychus', 'lastname': 'Findlay'})
+    assert resp.status_code == 201
+    emp3 = Employee.query.get(3)
+    assert emp3.id == 3
+    assert emp3.firstname == 'Tychus'
+    assert emp3.lastname == 'Findlay'
+
+    resp = test_client.post('/employee', data={'firstname': 'Mangsk', 'created_at': '2002-02-02T00:00'})
+
+
+
+def test_put(test_client):
+    resp = test_client.put('/employee/2', data={'id': 2, 'firstname': 'Jimmy'})
+    assert resp.status_code == 200
+    emp3 = Employee.query.get(2)
+    assert emp3.firstname == 'Jimmy'
