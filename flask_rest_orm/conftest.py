@@ -2,7 +2,7 @@ import json
 
 import pytest
 from flask import Flask
-from flask_sqlapi.tests.sample_model import db
+from flask_rest_orm.tests.sample_model import db
 
 
 @pytest.fixture

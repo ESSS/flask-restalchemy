@@ -4,8 +4,8 @@ import pytest
 from marshmallow import fields
 from marshmallow_sqlalchemy import ModelSchema
 
-from flask_sqlapi.resources import Api
-from flask_sqlapi.tests.sample_model import Employee, db, Company, Address, Address
+from flask_rest_orm.resources import Api
+from flask_rest_orm.tests.sample_model import Employee, db, Company, Address, Address
 
 
 class AddressSerializer(ModelSchema):

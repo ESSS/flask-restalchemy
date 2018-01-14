@@ -1,7 +1,7 @@
 from flask_restful import Api as RestfulApi
 from marshmallow_sqlalchemy import ModelSchema
 
-from flask_sqlapi.resources.resourcebase import resource_collection_factory, resource_item_factory
+from flask_rest_orm.resources.resourcebase import resource_collection_factory, resource_item_factory
 
 
 class Api(object):

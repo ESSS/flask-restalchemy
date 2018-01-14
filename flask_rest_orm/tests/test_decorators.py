@@ -2,8 +2,8 @@ from functools import wraps
 
 from flask_restful import abort, request
 
-from flask_sqlapi.resources import Api
-from flask_sqlapi.tests.sample_model import Address, Company
+from flask_rest_orm.resources import Api
+from flask_rest_orm.tests.sample_model import Address, Company
 
 
 def auth_required(func):
