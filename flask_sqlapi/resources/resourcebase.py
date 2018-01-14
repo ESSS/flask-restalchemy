@@ -3,8 +3,10 @@ from contextlib import contextmanager
 
 # from flasgger import swag_from
 # from flask_allows import Permission
+from functools import wraps
+
 from flask_restful import Resource, request
-from .utils import load_request_data, query_from_request, split_nested, DataJSONEncoder
+from .utils import load_request_data, query_from_request, split_nested
 from .docgeneration import gen_spec
 
 
@@ -17,39 +19,7 @@ def Permission(*args):
     yield True
 
 
-def expose_resource(url, resource, tags, entity_fields=None):
-    """
-    This function creates the API entries for the given sqlalchemy resource class and serve in the given url, it also
-    associates the resource with the given tags in order to verify authorization over the resource.
-    If the resource is marked as auditable, an API for Audit logs is created as child resource.
-
-    :param class resource:
-        sqlalchemy resource class
-
-    :param str url:
-        url route to match for the resource, standard flask routing rules apply.
-
-    :param list(str) tags:
-        tags to be associated to the resource
-
-    :param bool auditable:
-        Flag to tell if the resource is auditable and add a entry point for audit log as child resource
-    """
-    assert isinstance(url, str)
-    _ResourceCollectionClass = resource_collection_factory(resource, tags)
-    api.add_resource(_ResourceCollectionClass, url, endpoint=resource.__tablename__ + '_list')
-
-    _ResourceItemClass = resource_item_factory(resource, tags, entity_fields)
-    api.add_resource(_ResourceItemClass, url + '/<id>', endpoint=resource.__tablename__)
-
-
-def create_resource_api(resource, url, *args, **kw):
-    import warnings
-    warnings.warn("Deprecated: use expose_resource instead", DeprecationWarning)
-    expose_resource(url, resource, *args, **kw)
-
-
-def resource_collection_factory(resource_model, serializer, db_session):
+def resource_collection_factory(resource_model, serializer, db_session, resource_decorators=None):
     """
     This function creates a class to define a flask-restful resource for Get collection and post method
     from a sqlalchemy resource model with the given resource tags used to verify authorization access.
@@ -72,6 +42,7 @@ def resource_collection_factory(resource_model, serializer, db_session):
     resources.
     """
 
+    resource_decorators = resource_decorators or []
     get_specs_dict = gen_spec(resource_model, 'GET_Collection')
     post_specs_dict = gen_spec(resource_model, 'POST')
 
@@ -80,6 +51,8 @@ def resource_collection_factory(resource_model, serializer, db_session):
         flask-restful resource class that receives a SQLAlchemy model class and define the API to provide LIST and
         CREATE over data of that class
         """
+        method_decorators = resource_decorators
+
         _resource_model = resource_model
         _serializer = serializer
         _resource_tags = None
@@ -109,7 +82,7 @@ def resource_collection_factory(resource_model, serializer, db_session):
     return _ResourceCollection
 
 
-def resource_item_factory(resource_model, serializer, db_session):
+def resource_item_factory():
     """
     This function creates a class to define a flask-restful resource for GET, PUT, and DELETE methods over an item
     from a sqlalchemy resource model with the given resource tags used to verify authorization access.
@@ -130,55 +103,64 @@ def resource_item_factory(resource_model, serializer, db_session):
     Then a unique class is created for each sqlalchemy resource, otherwise documentation would be shared by all the
     resources.
     """
-    get_specs_dict = gen_spec(resource_model, 'GET')
-    put_specs_dict = gen_spec(resource_model, 'PUT')
-    del_specs_dict = gen_spec(resource_model, 'DELETE')
 
-    class _ResourceItem(Resource):
-        """
-        flask-restful resource class that receives receives a SQLAlchemy model class and define the API to provide GET,
-        UPDATE and DELETE over a single data identified by id
-        """
-        _resource_model = resource_model
-        _resource_tags = None
-        _serializer = serializer
+    class _ItemResource(ItemResource):
+        pass
 
-        # @auth_token_required
-        # @swag_from(get_specs_dict)
-        def get(self, id):
-            with Permission(CanRead(self._resource_tags)):
-                data = self._resource_model.query.filter_by(id=id).first()
-                if data:
-                    return self._serializer.dump(data).data
-                return '', 404
+    return _ItemResource
 
-        # @auth_token_required
-        # @swag_from(put_specs_dict)
-        def put(self, id):
-            with Permission(CanWrite(self._resource_tags)):
-                data = self._resource_model.query.filter_by(id=id).first()
-                if data:
-                    args = load_request_data(request)
-                    args, nested_args = split_nested(args)
-                    for key, value in nested_args.items():
-                        if key in data.__mapper__.relationships:
-                            setattr(data, key, data.__mapper__.relationships[key].argument(**value))
-                    for k in args.keys():
-                        setattr(data, k, args[k])
-                    db_session.add(data)
-                    db_session.commit()
-                    return self._serializer.dump(data).data
-                return '', 404
 
-        # @auth_token_required
-        # @swag_from(del_specs_dict)
-        def delete(self, id):
-            with Permission(CanWrite(self._resource_tags)):
-                data = self._resource_model.query.filter_by(id=id).first()
-                if data:
-                    db_session.delete(data)
-                    db_session.commit()
-                    return '', 204
-                return '', 404
+class ItemResource(Resource):
+    """
+    flask-restful resource class that receives receives a SQLAlchemy model class and define the API to provide GET,
+    UPDATE and DELETE over a single data identified by id
+    """
 
-    return _ResourceItem
+    # get_specs_dict = gen_spec(resource_model, 'GET')
+    # put_specs_dict = gen_spec(resource_model, 'PUT')
+    # del_specs_dict = gen_spec(resource_model, 'DELETE')
+
+    def __init__(self, declarative_model, serializer, session):
+        self._resource_model = declarative_model
+        self._serializer = serializer
+        self._db_session = session
+
+    # @auth_token_required
+    # @swag_from(get_specs_dict)
+    def get(self, id):
+        with Permission(CanRead(None)):
+            data = self._resource_model.query.filter_by(id=id).first()
+            if data:
+                return self._serializer.dump(data).data
+            return '', 404
+
+    # @auth_token_required
+    # @swag_from(put_specs_dict)
+    def put(self, id):
+        with Permission(CanWrite(None)):
+            data = self._resource_model.query.filter_by(id=id).first()
+            if data:
+                session = self._db_session
+                args = load_request_data(request)
+                args, nested_args = split_nested(args)
+                for key, value in nested_args.items():
+                    if key in data.__mapper__.relationships:
+                        setattr(data, key, data.__mapper__.relationships[key].argument(**value))
+                for k in args.keys():
+                    setattr(data, k, args[k])
+                session.add(data)
+                session.commit()
+                return self._serializer.dump(data).data
+            return '', 404
+
+    # @auth_token_required
+    # @swag_from(del_specs_dict)
+    def delete(self, id):
+        with Permission(CanWrite(None)):
+            data = self._resource_model.query.filter_by(id=id).first()
+            if data:
+                session = self._db_session
+                session.delete(data)
+                session.commit()
+                return '', 204
+            return '', 404

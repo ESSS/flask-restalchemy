@@ -16,6 +16,18 @@ class Company(Base):
     name = Column(String)
 
 
+class Address(Base):
+
+    __tablename__ = 'Address'
+
+    id = Column(Integer, primary_key=True)
+    street = Column(String)
+    number = Column(String)
+    zip = Column(String)
+    city = Column(String)
+    state = Column(String)
+
+
 class Employee(Base):
 
     __tablename__ = 'Employee'
@@ -31,3 +43,6 @@ class Employee(Base):
     company_name = column_property(
         select([Company.name]).where(Company.id == company_id)
     )
+
+    address_id = Column(ForeignKey('Address.id'))
+    address = relationship(Address)
