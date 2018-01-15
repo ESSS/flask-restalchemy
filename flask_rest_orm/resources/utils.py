@@ -43,8 +43,6 @@ def load_request_data(req):
         data = json.loads(req.data.decode('utf-8'))
     else:
         data = req.form.to_dict()
-    # TODO remove it. Task ID: RFDAP-332
-    data.pop('password', None)
     return data
 
 

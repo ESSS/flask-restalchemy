@@ -17,7 +17,6 @@ def auth_required(func):
 
 
 def test_resource_decorators(client, flask_app):
-    global AUTHENTICATED
     api = Api(flask_app)
     api.add_model(Company)
     api.add_model(Address, request_decorators=[auth_required])
@@ -27,8 +26,10 @@ def test_resource_decorators(client, flask_app):
     assert client.get('/company', data={'name': 'Terran'}).status_code == 200
     assert client.post('/company', data={'name': 'Terran'}).status_code == 201
 
-    assert client.get('/address', headers={'auth': True}).status_code == 200
+    assert client.post('/address', data={'id': 2, 'steet': '5 Av'}, headers={'auth': True}).status_code == 201
     assert client.post('/company', data={'name': 'Terran'}, headers={'auth': True}).status_code == 201
+    assert client.get('/address/2').status_code == 403
+    assert client.get('/address/2', headers={'auth': True}).status_code == 200
 
 
 def test_api_decorators(client, flask_app):
