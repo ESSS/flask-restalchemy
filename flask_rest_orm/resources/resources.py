@@ -1,6 +1,6 @@
-from flask import request
+from flask import request, json
 from flask_restful import Resource
-from .utils import load_request_data, query_from_request, split_nested
+from .utils import query_from_request
 
 
 class BaseResource(Resource):
@@ -9,6 +9,17 @@ class BaseResource(Resource):
         self._resource_model = declarative_model
         self._serializer = serializer
         self._db_session = session
+
+    def save_from_request(self, req):
+        if req.data:
+            request_data = json.loads(req.data.decode('utf-8'))
+        else:
+            request_data = req.form.to_dict()
+        session = self._db_session
+        model_obj = self._serializer.load(request_data, session).data
+        session.add(model_obj)
+        session.commit()
+        return self._serializer.dump(model_obj).data
 
 
 class ItemResource(BaseResource):
@@ -26,17 +37,8 @@ class ItemResource(BaseResource):
     def put(self, id):
         data = self._resource_model.query.filter_by(id=id).first()
         if data:
-            session = self._db_session
-            args = load_request_data(request)
-            args, nested_args = split_nested(args)
-            for key, value in nested_args.items():
-                if key in data.__mapper__.relationships:
-                    setattr(data, key, data.__mapper__.relationships[key].argument(**value))
-            for k in args.keys():
-                setattr(data, k, args[k])
-            session.add(data)
-            session.commit()
-            return self._serializer.dump(data).data
+            saved = self.save_from_request(request)
+            return saved
         return '', 404
 
     def delete(self, id):
@@ -63,11 +65,5 @@ class CollectionResource(BaseResource):
         return collection
 
     def post(self):
-        session = self._db_session
-        args = load_request_data(request)
-        args, nested_args = split_nested(args)
-        obj = self._serializer.load(args, session=session).data
-        session.add(obj)
-        session.commit()
-        serialized = self._serializer.dump(obj).data
-        return serialized, 201
+        saved = self.save_from_request(request)
+        return saved, 201

@@ -5,7 +5,7 @@ from marshmallow import fields
 from marshmallow_sqlalchemy import ModelSchema
 
 from flask_rest_orm import Api
-from flask_rest_orm.tests.sample_model import Employee, db, Company, Address, Address
+from flask_rest_orm.tests.sample_model import Employee, Company, Address
 
 
 class AddressSerializer(ModelSchema):
@@ -23,7 +23,7 @@ class EmployeeSerializer(ModelSchema):
     address = fields.Nested(AddressSerializer)
 
 
-@pytest.fixture()
+@pytest.fixture(autouse=True)
 def sample_api(flask_app):
     api = Api(flask_app)
     api.add_model(Company)
@@ -32,7 +32,7 @@ def sample_api(flask_app):
 
 
 @pytest.fixture(autouse=True)
-def register_model_and_api(db_session, sample_api):
+def create_test_sample(db_session):
     company = Company(id=5, name='Terrans')
     emp1 = Employee(id=1, firstname='Jim', lastname='Raynor', company=company)
     emp2 = Employee(id=2, firstname='Sarah', lastname='Kerrigan', company=company)
@@ -58,7 +58,6 @@ def test_get(client):
     assert 'password' not in serialized
     assert serialized['company'] == expected_employee.company_id
     assert serialized['company_name'] == Company.query.get(expected_employee.company_id).name
-
     assert serialized['address'] == AddressSerializer().dump(expected_employee.address).data
 
 
@@ -79,7 +78,7 @@ def test_post(client):
         'id': 3,
         'firstname': 'Tychus',
         'lastname': 'Findlay',
-        'created_at': '2002-02-02T00:00'
+        'created_at': '2002-02-02T00:00',
     }
     resp = client.post('/employee', data=post_data)
     assert resp.status_code == 201

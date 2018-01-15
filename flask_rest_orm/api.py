@@ -14,7 +14,7 @@ class Api(object):
     def add_model(self, model, collection_name=None, serializer=None, request_decorators=None,
                   collection_decorators=None):
         """
-        Create API endpoints for the given SQLAlchemy model class.
+        Create API endpoints for the given SQLAlchemy declarative class.
 
         :param class model: the SQLAlchemy declarative class
 
@@ -64,10 +64,10 @@ class Api(object):
     @staticmethod
     def create_default_serializer(model_class):
         """
-        Create a default serializer for the given SQLAlchemy declarative class. Recipe based onn
+        Create a default serializer for the given SQLAlchemy declarative class. Recipe based on
         https://marshmallow-sqlalchemy.readthedocs.io/en/latest/recipes.html#automatically-generating-schemas-for-sqlalchemy-models
 
-        :param model_class: the SQLAlchemy declarative class
+        :param model_class: the SQLAlchemy mapped class
 
         :rtype: class
         """
@@ -82,3 +82,7 @@ class Api(object):
             {'Meta': Meta}
         )
         return schema_class
+
+    # Expose methods from flask-restful Api class
+    init_app = RestfulApi.init_app
+    add_resource = RestfulApi.add_resource
