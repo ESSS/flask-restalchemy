@@ -1,26 +1,9 @@
 from datetime import datetime
 
 import pytest
-from marshmallow import fields
-from marshmallow_sqlalchemy import ModelSchema
 
 from flask_rest_orm import Api
-from flask_rest_orm.tests.sample_model import Employee, Company, Address
-
-
-class AddressSerializer(ModelSchema):
-    class Meta:
-        model = Address
-
-
-class EmployeeSerializer(ModelSchema):
-    class Meta:
-        model = Employee
-
-    password = fields.Str(load_only=True)
-    created_at = fields.DateTime(dump_only=True)
-    company_name = fields.Str(dump_only=True)
-    address = fields.Nested(AddressSerializer)
+from flask_rest_orm.tests.sample_model import Employee, Company, Address, EmployeeSerializer, AddressSerializer
 
 
 @pytest.fixture(autouse=True)
@@ -60,8 +43,11 @@ def test_get(client):
     assert serialized['company_name'] == Company.query.get(expected_employee.company_id).name
     assert serialized['address'] == AddressSerializer().dump(expected_employee.address).data
 
+    resp = client.get('/employee/10239')
+    assert resp.status_code == 404
 
-# noinspection PyShadowingNames
+
+
 def test_get_collection(client):
     resp = client.get('/employee')
     assert resp.status_code == 200
@@ -95,7 +81,7 @@ def test_post_default_serializer(client):
 
 
 def test_put(client):
-    resp = client.put('/employee/2', data={'id': 2, 'firstname': 'Jimmy'})
+    resp = client.put('/employee/1', data={'firstname': 'Jimmy'})
     assert resp.status_code == 200
-    emp3 = Employee.query.get(2)
+    emp3 = Employee.query.get(1)
     assert emp3.firstname == 'Jimmy'

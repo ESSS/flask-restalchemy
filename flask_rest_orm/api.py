@@ -1,24 +1,28 @@
 from flask_restful import Api as RestfulApi
 from marshmallow_sqlalchemy import ModelSchema
 
-from flask_rest_orm.resources.resources import CollectionResource, ItemResource
+from flask_rest_orm.resources.resources import CollectionResource, ItemResource, CollectionRelationResource, \
+    ItemRelationResource
 
 
 class Api(object):
 
-    def __init__(self, app, prefix='', errors=None, request_decorators=None):
+    def __init__(self, app=None, prefix='', errors=None, request_decorators=None):
         self.restful_api = RestfulApi(app=app, prefix=prefix, decorators=request_decorators,
                                       default_mediatype='application/json', errors=errors)
-        self._db = app.extensions['sqlalchemy'].db
+        self._db = None
+        if app:
+            self.init_app(app)
 
-    def add_model(self, model, collection_name=None, serializer=None, request_decorators=None,
+    def add_model(self, model, url=None, serializer=None, request_decorators=None,
                   collection_decorators=None):
         """
         Create API endpoints for the given SQLAlchemy declarative class.
 
         :param class model: the SQLAlchemy declarative class
 
-        :param string collection_name: name of the endpoint (defaults to model name in lower case)
+        :param string url: one or more url routes to match for the resource, standard
+             flask routing rules apply. Defaults to model name in lower case.
 
         :param ModelSchema serializer: Marshmallow schema for serialization. If `None`, a default serializer will be
             created.
@@ -32,10 +36,10 @@ class Api(object):
             request_decorators value.
         """
         restful = self.restful_api
-        collection_name = collection_name or model.__tablename__
+        collection_name = model.__tablename__
         if not serializer:
             serializer = self.create_default_serializer(model)()
-        url = '/' + collection_name.lower()
+        url =  url or '/' + collection_name.lower()
 
         if not request_decorators:
             request_decorators = []
@@ -51,14 +55,61 @@ class Api(object):
         restful.add_resource(
             _CollectionResource,
             url,
-            endpoint=collection_name + '_collection',
-            resource_class_args=(model, serializer, self._db.session),
+            endpoint=collection_name + '-list',
+            resource_class_args=(model, serializer, self.get_db_session),
         )
         restful.add_resource(
             _ItemResource,
             url + '/<id>',
             endpoint=collection_name,
-            resource_class_args=(model, serializer, self._db.session)
+            resource_class_args=(model, serializer, self.get_db_session)
+        )
+
+
+    def add_relation(self, model, relation_fk, related_model, url_rule=None, serializer=None, request_decorators=None,
+              collection_decorators=None):
+        model_collection_name = model.__tablename__.lower()
+        related_collection_name = related_model.__tablename__.lower()
+        endpoint_name = '{}-{}-relation'.format(model_collection_name, related_collection_name)
+        if not serializer:
+            serializer = self.create_default_serializer(model)()
+        if url_rule:
+            assert '<relation_id>' in url_rule
+        else:
+            url_rule = '/{}/<relation_id>/{}'.format(related_collection_name, model_collection_name)
+
+        if not request_decorators:
+            request_decorators = []
+        if not collection_decorators:
+            collection_decorators = request_decorators
+
+        class _CollectionRelationResource(CollectionRelationResource):
+            method_decorators = collection_decorators
+
+        class _ItemRelationResource(ItemRelationResource):
+            method_decorators = collection_decorators
+
+        self._add_resources(
+            _ItemRelationResource,
+            _CollectionRelationResource,
+            url_rule,
+            endpoint_name,
+            resource_init_args=(model, relation_fk, related_model, serializer, self.get_db_session),
+        )
+
+    def _add_resources(self, item_resource, collection_resource, url_rule, endpoint_prefix, resource_init_args):
+        restful = self.restful_api
+        restful.add_resource(
+            item_resource,
+            url_rule + '/<id>',
+            endpoint=endpoint_prefix,
+            resource_class_args=resource_init_args,
+        )
+        restful.add_resource(
+            collection_resource,
+            url_rule,
+            endpoint=endpoint_prefix + '-list',
+            resource_class_args=resource_init_args,
         )
 
     @staticmethod
@@ -83,6 +134,10 @@ class Api(object):
         )
         return schema_class
 
-    # Expose methods from flask-restful Api class
-    init_app = RestfulApi.init_app
-    add_resource = RestfulApi.add_resource
+    def init_app(self, app):
+        self.restful_api.init_app(app)
+        self._db = app.extensions['sqlalchemy'].db
+
+
+    def get_db_session(self):
+        return self._db.session
