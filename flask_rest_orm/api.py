@@ -89,7 +89,7 @@ class Api(object):
         class _ItemRelationResource(ItemRelationResource):
             method_decorators = collection_decorators
 
-        self._add_resources(
+        self._add_model_resources(
             _ItemRelationResource,
             _CollectionRelationResource,
             url_rule,
@@ -97,7 +97,7 @@ class Api(object):
             resource_init_args=(model, relation_fk, related_model, serializer, self.get_db_session),
         )
 
-    def _add_resources(self, item_resource, collection_resource, url_rule, endpoint_prefix, resource_init_args):
+    def _add_model_resources(self, item_resource, collection_resource, url_rule, endpoint_prefix, resource_init_args):
         restful = self.restful_api
         restful.add_resource(
             item_resource,
@@ -111,6 +111,10 @@ class Api(object):
             endpoint=endpoint_prefix + '-list',
             resource_class_args=resource_init_args,
         )
+
+    def add_resource(self, *args, **kw):
+        self.restful_api.add_resource(*args, **kw)
+
 
     @staticmethod
     def create_default_serializer(model_class):
