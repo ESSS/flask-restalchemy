@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from marshmallow import fields, pre_load
 from marshmallow_sqlalchemy import ModelSchema
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, select, Table
-from sqlalchemy.orm import relationship, column_property
+from sqlalchemy.orm import relationship, column_property, object_session
 
 db = SQLAlchemy()
 Base = db.Model
@@ -59,6 +59,13 @@ class Employee(Base):
     address = relationship(Address)
 
     departments = relationship('Department', secondary='employee_department')
+
+
+    @property
+    def colleagues(self):
+        return object_session(self).execute(
+            select([Employee]).where(Employee.company_id == self.company_id)
+        ).fetchall()
 
 
 employee_department = Table('employee_department', Base.metadata,

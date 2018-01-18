@@ -28,6 +28,7 @@ def sample_api(flask_app):
     api = Api(flask_app)
     api.add_model(Company)
     api.add_relation(Company.employees, serializer=EmployeeSerializer())
+    api.add_property(Employee, Employee, 'colleagues', serializer=EmployeeSerializer())
     return api
 
 def test_get_collection(client):
@@ -71,3 +72,14 @@ def test_delete(client):
 
     resp = client.delete('/company/3/employee/9')
     assert resp.status_code == 204
+
+
+def test_property(client):
+    resp = client.get('/employee/9/colleagues')
+    assert resp.status_code == 200
+    assert len(resp.parsed_data) == 2
+    assert resp.parsed_data[0]['firstname'] == 'Sarah'
+    assert resp.parsed_data[1]['firstname'] == 'Jim'
+
+    resp = client.post('/employee/9/colleagues')
+    assert resp.status_code == 405

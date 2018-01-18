@@ -1,5 +1,6 @@
 from flask import request, json
 from flask_restful import Resource
+from marshmallow_sqlalchemy import ModelSchema
 
 from .utils import query_from_request
 
@@ -21,6 +22,7 @@ class BaseResource(Resource):
         self._resource_model = declarative_model
         self._serializer = serializer
         self._serializer.strict = True
+        assert isinstance(self._serializer, ModelSchema), 'Invalid serializer instance: {}'.format(serializer)
         self._session_getter = session_getter
 
     def save_from_request(self, extra_attrs={}):
@@ -166,13 +168,11 @@ class ItemRelationResource(BaseResource):
         self._relation_property = relation_property
         self._related_model = relation_property.class_
 
-
     def get(self, relation_id, id):
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
         return self._serializer.dump(requested_obj).data, 200
-
 
     def put(self, relation_id, id):
         requested_obj = self._query_related_obj(relation_id, id)
@@ -191,13 +191,32 @@ class ItemRelationResource(BaseResource):
         session.commit()
         return '', 204
 
-
     def _query_related_obj(self, relation_id, id):
         # Query resource model by ID but also add the relationship as a query constrain.
         return self._db_session.query(self._resource_model).filter(
             self._resource_model.id == id,
             self._relation_property.expression.right == relation_id,
             ).one_or_none()
+
+
+class CollectionPropertyResource(CollectionRelationResource):
+
+    def __init__(self, declarative_model, related_model, property_name, serializer, session_getter):
+        super(CollectionRelationResource, self).__init__(declarative_model, serializer, session_getter)
+        self._related_model = related_model
+        self._property_name = property_name
+
+    def get(self, relation_id):
+        session = self._db_session()
+        related_obj = session.query(self._related_model).get(relation_id)
+        if related_obj is None:
+            return NOT_FOUND_ERROR, 404
+        data = getattr(related_obj, self._property_name)
+        collection = [self._serializer.dump(item).data for item in data]
+        return collection
+
+    def post(self, relation_id):
+        return 'POST not allowed for property resources', 405
 
 
 class RequestException(Exception):

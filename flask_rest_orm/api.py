@@ -2,7 +2,7 @@ from flask_restful import Api as RestfulApi
 from marshmallow_sqlalchemy import ModelSchema
 
 from flask_rest_orm.resources.resources import CollectionResource, ItemResource, CollectionRelationResource, \
-    ItemRelationResource
+    ItemRelationResource, CollectionPropertyResource
 
 
 class Api(object):
@@ -91,27 +91,45 @@ class Api(object):
         class _ItemRelationResource(ItemRelationResource):
             method_decorators = collection_decorators
 
-        self._add_model_resources(
+        self._add_item_collection_resources(
             _ItemRelationResource,
             _CollectionRelationResource,
             url_rule,
             endpoint_name,
             resource_init_args=(relation_property, serializer, self.get_db_session),
         )
-
-    def _add_model_resources(self, item_resource, collection_resource, url_rule, endpoint_prefix, resource_init_args):
-        restful = self.restful_api
-        restful.add_resource(
+        
+    def _add_item_collection_resources(self, item_resource, collection_resource, url_rule, endpoint, resource_init_args):
+        self.add_resource(
             item_resource,
             url_rule + '/<id>',
-            endpoint=endpoint_prefix,
+            endpoint=endpoint,
             resource_class_args=resource_init_args,
         )
-        restful.add_resource(
+        self.add_resource(
             collection_resource,
             url_rule,
-            endpoint=endpoint_prefix + '-list',
+            endpoint=endpoint + '-list',
             resource_class_args=resource_init_args,
+        )
+
+    def add_property(self, model, related_model, property_name, url_rule=None, serializer=None, request_decorators=[]):
+        if not serializer:
+            serializer = self.create_default_serializer(model)()
+        related_collection_name = related_model.__tablename__.lower()
+        if url_rule:
+            assert '<relation_id>' in url_rule
+        else:
+            url_rule = '/{}/<relation_id>/{}'.format(related_collection_name, property_name.lower())
+
+        class _CollectionPropertyResource(CollectionPropertyResource):
+            method_decorators = request_decorators
+            
+        self.add_resource(
+            _CollectionPropertyResource,
+            url_rule,
+            endpoint='{}-{}-property'.format(related_collection_name, property_name),
+            resource_class_args=(model, related_model, property_name, serializer, self.get_db_session)
         )
 
     def add_resource(self, *args, **kw):
