@@ -3,7 +3,7 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from marshmallow import fields, pre_load
 from marshmallow_sqlalchemy import ModelSchema
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, select
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, select, Table
 from sqlalchemy.orm import relationship, column_property
 
 db = SQLAlchemy()
@@ -13,6 +13,15 @@ Base = db.Model
 class Company(Base):
 
     __tablename__ = 'Company'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    employees = relationship("Employee")
+
+
+class Department(Base):
+
+    __tablename__ = 'Department'
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -41,13 +50,21 @@ class Employee(Base):
     password = Column(String)
     created_at = Column(DateTime, default=datetime(2000, 1, 1))
     company_id = Column(ForeignKey('Company.id'))
-    company = relationship(Company)
+    company = relationship(Company, back_populates='employees')
     company_name = column_property(
         select([Company.name]).where(Company.id == company_id)
     )
 
     address_id = Column(ForeignKey('Address.id'))
     address = relationship(Address)
+
+    departments = relationship('Department', secondary='employee_department')
+
+
+employee_department = Table('employee_department', Base.metadata,
+    Column('employee_id', Integer, ForeignKey('Employee.id')),
+    Column('department_id', Integer, ForeignKey('Department.id'))
+)
 
 
 class AddressSerializer(ModelSchema):

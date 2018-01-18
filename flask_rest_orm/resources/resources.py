@@ -1,6 +1,5 @@
 from flask import request, json
 from flask_restful import Resource
-from sqlalchemy import text
 
 from .utils import query_from_request
 
@@ -101,7 +100,7 @@ class CollectionRelationResource(BaseResource):
     element of the parent model.
     """
 
-    def __init__(self, declarative_model, relation_fk, related_model, serializer, session_getter):
+    def __init__(self, relation_property, serializer, session_getter):
         """
         The Base class for ORM resources
 
@@ -113,41 +112,34 @@ class CollectionRelationResource(BaseResource):
         :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
             DB session may not be available on the resource initialization.
         """
-        super(CollectionRelationResource, self).__init__(declarative_model, serializer, session_getter)
-        self._relation_fk = relation_fk
-        self._related_model = related_model
-        self._association_fk = None
+        resource_model = relation_property.prop.mapper.class_
+        super(CollectionRelationResource, self).__init__(resource_model, serializer, session_getter)
+        self._relation_property = relation_property
+        self._related_model = relation_property.class_
 
 
     def get(self, relation_id):
         session = self._db_session()
         related_obj = session.query(self._related_model).get(relation_id)
         if related_obj is None:
-            return {'msg': 'Parent resource does not exist!'}, 400
-        if self._association_fk:
-            fk_value = getattr(related_obj, self._association_fk)
-        else:
-            fk_value = relation_id
-        fk_column = self._relation_fk
-        filter_text = "{fk_column} = {fk_value}".format(**locals())
-        data = session.query(self._resource_model).filter(text(filter_text)).all()
+            return NOT_FOUND_ERROR, 404
+        # TODO: Is there a more efficient way than using getattr?
+        data = getattr(related_obj, self._relation_property.key)
         collection = [self._serializer.dump(item).data for item in data]
         return collection
 
 
     def post(self, relation_id):
         session = self._db_session()
-        related = session.query(self._related_model).get(relation_id)
-        if not related:
-            return {'msg': 'Parent resource does not exist!'}, 400
-        if self._association_fk:
-            fk_value = getattr(related, self._association_fk)
-        else:
-            fk_value = relation_id
-        serialized = load_request_data()
-        serialized[self._relation_fk] = int(fk_value)
-        data = self._save_serialized(serialized)
-        return data, 201
+        related_obj = session.query(self._related_model).get(relation_id)
+        if not related_obj:
+            return NOT_FOUND_ERROR, 404
+        collection = getattr(related_obj, self._relation_property.key)
+        new_obj = self._serializer.load(load_request_data(), session).data
+        collection.append(new_obj)
+        session.add(new_obj)
+        session.commit()
+        return self._serializer.dump(new_obj).data, 201
 
 
 class ItemRelationResource(BaseResource):
@@ -157,7 +149,7 @@ class ItemRelationResource(BaseResource):
     specific element of the parent model.
     """
 
-    def __init__(self, declarative_model, relation_fk, related_model, serializer, session_getter):
+    def __init__(self, relation_property, serializer, session_getter):
         """
         The Base class for ORM resources
 
@@ -169,56 +161,43 @@ class ItemRelationResource(BaseResource):
         :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
             DB session may not be available on the resource initialization.
         """
-        super(ItemRelationResource, self).__init__(declarative_model, serializer, session_getter)
-        self._relation_fk = relation_fk
-        self._related_model = related_model
-        self._association_fk = None
+        resource_model = relation_property.prop.mapper.class_
+        super(ItemRelationResource, self).__init__(resource_model, serializer, session_getter)
+        self._relation_property = relation_property
+        self._related_model = relation_property.class_
+
 
     def get(self, relation_id, id):
-        try:
-            model_obj = self._query_valid_child(relation_id, id)
-        except RequestException as err:
-            return err.msg, err.error_code
-        return self._serializer.dump(model_obj).data
+        requested_obj = self._query_related_obj(relation_id, id)
+        if not requested_obj:
+            return NOT_FOUND_ERROR, 404
+        return self._serializer.dump(requested_obj).data, 200
 
 
     def put(self, relation_id, id):
-        try:
-            model_obj = self._query_valid_child(relation_id, id)
-        except RequestException as err:
-            return err.msg, err.error_code
-        serialized = self._serializer.dump(model_obj).data
+        requested_obj = self._query_related_obj(relation_id, id)
+        if not requested_obj:
+            return NOT_FOUND_ERROR, 404
+        serialized = self._serializer.dump(requested_obj).data
         serialized.update(load_request_data())
         return self._save_serialized(serialized)
 
     def delete(self, relation_id, id):
-        try:
-            child = self._query_valid_child(relation_id, id)
-        except RequestException as err:
-            return err.msg, err.error_code
+        requested_obj = self._query_related_obj(relation_id, id)
+        if not requested_obj:
+            return NOT_FOUND_ERROR, 404
         session = self._db_session()
-        session.delete(child)
+        session.delete(requested_obj)
         session.commit()
         return '', 204
 
-    def _query_valid_child(self, related_id, id):
-        session = self._db_session()
-        related = session.query(self._related_model).get(related_id)
-        if related is None:
-            raise RequestException('Related resource does not exist!', 400)
 
-        model = session.query(self._resource_model).get(id)
-        if model is None:
-            raise RequestException('Child not found!', 404)
-
-        if self._association_fk:
-            fk_value = getattr(related, self._association_fk)
-        else:
-            fk_value = int(related_id)
-        if getattr(model, self._relation_fk) != fk_value:
-            raise RequestException('Child is not from this parent!', 400)
-
-        return model
+    def _query_related_obj(self, relation_id, id):
+        # Query resource model by ID but also add the relationship as a query constrain.
+        return self._db_session.query(self._resource_model).filter(
+            self._resource_model.id == id,
+            self._relation_property.expression.right == relation_id,
+            ).one_or_none()
 
 
 class RequestException(Exception):

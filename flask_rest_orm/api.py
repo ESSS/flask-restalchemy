@@ -66,8 +66,10 @@ class Api(object):
         )
 
 
-    def add_relation(self, model, relation_fk, related_model, url_rule=None, serializer=None, request_decorators=None,
+    def add_relation(self, relation_property, url_rule=None, serializer=None, request_decorators=None,
               collection_decorators=None):
+        model = relation_property.prop.mapper.class_
+        related_model = relation_property.class_
         model_collection_name = model.__tablename__.lower()
         related_collection_name = related_model.__tablename__.lower()
         endpoint_name = '{}-{}-relation'.format(model_collection_name, related_collection_name)
@@ -94,7 +96,7 @@ class Api(object):
             _CollectionRelationResource,
             url_rule,
             endpoint_name,
-            resource_init_args=(model, relation_fk, related_model, serializer, self.get_db_session),
+            resource_init_args=(relation_property, serializer, self.get_db_session),
         )
 
     def _add_model_resources(self, item_resource, collection_resource, url_rule, endpoint_prefix, resource_init_args):
