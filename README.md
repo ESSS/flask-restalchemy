@@ -6,12 +6,12 @@ A Flask extension to build REST APIs based on SQLAlchemy models. It uses [marshm
 to serialize models and avoid the need of building *Schema* classes, since *Schemas* are 
 typically a repetition of your model.
 
-By adding a model to the API, all it's properties will be exposed:
+By adding a model to the API, all its properties will be exposed:
 
 ```python
 class User(Base):
 
-    __tablename__ = 'Employee'
+    __tablename__ = 'User'
 
     id = Column(Integer, primary_key=True)
     firstname = Column(String)
@@ -42,6 +42,5 @@ class UserSerializer(ModelSchema):
 api = Api(flask_app)
 api.add_model(User, '/user', serializer=UserSerializer())
 ```
-
 
 [marshmallow-sqlalchemy]: https://marshmallow-sqlalchemy.readthedocs.io
