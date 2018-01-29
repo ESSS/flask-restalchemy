@@ -2,7 +2,8 @@ from sqlalchemy import desc
 import json
 import operator
 
-OPERATORS = {
+# Filter operators defined on SqlAlchemy ColumnElement
+SQLA_OPERATORS = {
     'like': 'like',
     'notlike': 'notlike',
     'ilike': 'ilike',
@@ -16,16 +17,41 @@ OPERATORS = {
     'in': 'in_',
     'notin': 'notin_',
     'between': 'between',
+    'eq': '__eq__',
+    'ne': '__ne__',
+    'gt': '__gt__',
+    'ge': '__ge__',
+    'lt': '__lt__',
+    'le': '__le__',
 }
 
-OPERATE = {
-    'eq': 'eq',
-    'ne': 'ne',
-    'gt': 'gt',
-    'ge': 'ge',
-    'lt': 'lt',
-    'le': 'le',
-}
+
+def get_operator(column, op_name, value):
+    """
+    :param column:
+         SQLAlchemy ColumnElement
+
+    :param op_name:
+        Key of OPERATORS or COMPARE_OPERATORS
+
+    :param value:
+        value to be applied to the operator
+
+    :rtype: ColumnOperators
+    :return:
+        returns a boolean, comparison, and other operators for ColumnElement expressions.
+        ref: http://docs.sqlalchemy.org/en/latest/core/sqlelement.html#sqlalchemy.sql.operators.ColumnOperators
+    """
+    if not op_name:
+        return column.operate(operator.eq, value)
+    elif op_name in SQLA_OPERATORS:
+        op = SQLA_OPERATORS.get(op_name)
+        if op == 'between':
+            return column.between(value[0], value[1])
+        return getattr(column, op)(value)
+    else:
+        raise ValueError(f'Unknown operator {op_name}')
+
 
 def query_from_request(model, request):
     """
@@ -47,43 +73,29 @@ def query_from_request(model, request):
     :rtype: list
     :return: the items for the current page
     """
-    builder = model.query
+    query = model.query
 
-    def get_operator(attr, key, value):
-        if not key:
-            return attr.operate(operator.eq, value)
-        elif key in OPERATORS:
-            op = OPERATORS.get(key)
-            if op == 'between':
-                return attr.between(value[0],value[1])
-            return getattr(attr, op)(value)
-        elif key in OPERATE:
-            op = OPERATE.get(key)
-            return attr.operate(getattr(operator, op), value)
-        else:
-            raise Exception('Unknown operator')
-
-    def filter(attr, value):
-        if isinstance(value, dict):
-            key = next(iter(value))
-            return builder.filter(get_operator(attr, key, value.get(key)))
-        return builder.filter(get_operator(attr, None, value))
+    def build_query(column, request_filter):
+        if isinstance(request_filter, dict):
+            op_name = next(iter(request_filter))
+            return query.filter(get_operator(column, op_name, request_filter.get(op_name)))
+        return query.filter(get_operator(column, None, request_filter))
 
     if 'filter' in request.args:
         filters = json.loads(request.args['filter'])
         for attr, value in filters.items():
-            builder = filter(getattr(model, attr), value)
+            query = build_query(getattr(model, attr), value)
     if 'limit' in request.args:
         limit = request.args['limit']
-        builder = builder.limit(limit)
+        query = query.limit(limit)
     if 'order_by' in request.args:
         col = getattr(model,request.args['order_by'])
         if 'desc' in request.args:
-            builder = builder.order_by(desc(col))
+            query = query.order_by(desc(col))
         else:
-            builder = builder.order_by(col)
+            query = query.order_by(col)
     if 'page' not in request.args:
-        resources = builder.all()
+        resources = query.all()
     else:
-        resources = builder.paginate().items
+        resources = query.paginate().items
     return resources

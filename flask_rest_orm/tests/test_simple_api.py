@@ -87,6 +87,7 @@ def test_put(client):
     emp3 = Employee.query.get(1)
     assert emp3.firstname == 'Jimmy'
 
+
 def test_filter(client):
     for i in range(20):
         client.post('/company', data={ 'name': 'Terrans {}'.format(i)})
@@ -100,6 +101,10 @@ def test_filter(client):
     assert len(dataList) == 5
 
     response = client.get('/company?filter={}'.format(json.dumps({"name": "Terrans 1"})))
+    dataList = response.parsed_data
+    assert len(dataList) == 1
+
+    response = client.get('/company?filter={}'.format(json.dumps({"name": {"eq": "Terrans 1"}})))
     dataList = response.parsed_data
     assert len(dataList) == 1
 
@@ -119,3 +124,6 @@ def test_filter(client):
     response = client.get('/company?limit=5&filter={}'.format(json.dumps({"name": {"startswith": 'Terr'}})))
     dataList = response.parsed_data
     assert len(dataList) == 5
+
+    with pytest.raises(ValueError, message='Unknown operator unknown_operator'):
+        client.get('/company?filter={}'.format(json.dumps({"name": {"unknown_operator": 'Terr'}})))
