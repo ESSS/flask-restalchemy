@@ -15,14 +15,19 @@ class Api(object):
             self.init_app(app)
 
     def add_model(self, model, url=None, serializer=None, request_decorators=None,
-                  collection_decorators=None):
+                  collection_decorators=None, collection_name=None):
         """
         Create API endpoints for the given SQLAlchemy declarative class.
+
 
         :param class model: the SQLAlchemy declarative class
 
         :param string url: one or more url routes to match for the resource, standard
              flask routing rules apply. Defaults to model name in lower case.
+
+        :param string collection_name: custom name for the collection endpoint url definition, if not set the model
+            table name will be used
+
 
         :param ModelSchema serializer: Marshmallow schema for serialization. If `None`, a default serializer will be
             created.
@@ -36,10 +41,10 @@ class Api(object):
             request_decorators value.
         """
         restful = self.restful_api
-        collection_name = model.__tablename__
+        collection_name = collection_name or model.__tablename__
         if not serializer:
             serializer = self.create_default_serializer(model)()
-        url =  url or '/' + collection_name.lower()
+        url = url or '/' + collection_name.lower()
 
         if not request_decorators:
             request_decorators = []
@@ -65,14 +70,36 @@ class Api(object):
             resource_class_args=(model, serializer, self.get_db_session)
         )
 
-
     def add_relation(self, relation_property, url_rule=None, serializer=None, request_decorators=None,
-              collection_decorators=None):
+                     collection_decorators=None, endpoint_name=None):
+        """
+        Create API endpoints for the given SQLAlchemy relationship.
+
+        :param relation_property: model relationship representing the collection to receive the CRUD operations
+
+        :param string url_rule: one or more url routes to match for the resource, standard
+             flask routing rules apply. Defaults to model name in lower case.
+
+        :param ModelSchema serializer: Marshmallow schema for serialization. If `None`, a default serializer will be
+            created.
+
+        :param list|dict request_decorators: decorators to be applied to HTTP methods. Could be a list of decorators
+            or a dict mapping HTTP method types to a list of decorators (dict keys should be 'get', 'post' or 'put').
+            See https://flask-restful.readthedocs.io/en/latest/extending.html#resource-method-decorators for more
+            details.
+
+        :param list|dict collection_decorators: decorators to be applied to HTTP methods for collections. It defaults to
+            request_decorators value.
+
+        :param string endpoint_name: endpoint name (defaults to :meth:`{model_collection_name}-{related_collection_name}-relation`
+            Can be used to reference this route in :class:`fields.Url` fields
+
+        """
         model = relation_property.prop.mapper.class_
         related_model = relation_property.class_
         model_collection_name = model.__tablename__.lower()
         related_collection_name = related_model.__tablename__.lower()
-        endpoint_name = '{}-{}-relation'.format(model_collection_name, related_collection_name)
+        endpoint_name = endpoint_name or '{}-{}-relation'.format(model_collection_name, related_collection_name)
         if not serializer:
             serializer = self.create_default_serializer(model)()
         if url_rule:
@@ -98,8 +125,9 @@ class Api(object):
             endpoint_name,
             resource_init_args=(relation_property, serializer, self.get_db_session),
         )
-        
-    def _add_item_collection_resources(self, item_resource, collection_resource, url_rule, endpoint, resource_init_args):
+
+    def _add_item_collection_resources(self, item_resource, collection_resource, url_rule, endpoint,
+                                       resource_init_args):
         self.add_resource(
             item_resource,
             url_rule + '/<id>',
@@ -124,7 +152,7 @@ class Api(object):
 
         class _CollectionPropertyResource(CollectionPropertyResource):
             method_decorators = request_decorators
-            
+
         self.add_resource(
             _CollectionPropertyResource,
             url_rule,
@@ -134,7 +162,6 @@ class Api(object):
 
     def add_resource(self, *args, **kw):
         self.restful_api.add_resource(*args, **kw)
-
 
     @staticmethod
     def create_default_serializer(model_class):
@@ -146,6 +173,7 @@ class Api(object):
 
         :rtype: class
         """
+
         class Meta(object):
             model = model_class
             include_fk = True
@@ -161,7 +189,6 @@ class Api(object):
     def init_app(self, app):
         self.restful_api.init_app(app)
         self._db = app.extensions['sqlalchemy'].db
-
 
     def get_db_session(self):
         return self._db.session
