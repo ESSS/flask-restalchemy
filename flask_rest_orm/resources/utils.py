@@ -1,5 +1,31 @@
 from sqlalchemy import desc
+import json
+import operator
 
+OPERATORS = {
+    'like': 'like',
+    'notlike': 'notlike',
+    'ilike': 'ilike',
+    'notilike': 'notilike',
+    'is': 'is_',
+    'isnot': 'isnot',
+    'match': 'match',
+    'startswith': 'startswith',
+    'endswith': 'endswith',
+    'contains': 'contains',
+    'in': 'in_',
+    'notin': 'notin_',
+    'between': 'between',
+}
+
+OPERATE = {
+    'eq': 'eq',
+    'ne': 'ne',
+    'gt': 'gt',
+    'ge': 'ge',
+    'lt': 'lt',
+    'le': 'le',
+}
 
 def query_from_request(model, request):
     """
@@ -22,10 +48,34 @@ def query_from_request(model, request):
     :return: the items for the current page
     """
     builder = model.query
-    for key in request.args:
-        if hasattr(model, key):
-            vals = request.args.getlist(key)  # one or many
-            builder = builder.filter(getattr(model, key).in_(vals))
+
+    def get_operator(attr, key, value):
+        if not key:
+            return attr.operate(operator.eq, value)
+        elif key in OPERATORS:
+            op = OPERATORS.get(key)
+            if op == 'between':
+                return attr.between(value[0],value[1])
+            return getattr(attr, op)(value)
+        elif key in OPERATE:
+            op = OPERATE.get(key)
+            return attr.operate(getattr(operator, op), value)
+        else:
+            raise Exception('Unknown operator')
+
+    def filter(attr, value):
+        if isinstance(value, dict):
+            key = next(iter(value))
+            return builder.filter(get_operator(attr, key, value.get(key)))
+        return builder.filter(get_operator(attr, None, value))
+
+    if 'filter' in request.args:
+        filters = json.loads(request.args['filter'])
+        for attr, value in filters.items():
+            builder = filter(getattr(model, attr), value)
+    if 'limit' in request.args:
+        limit = request.args['limit']
+        builder = builder.limit(limit)
     if 'order_by' in request.args:
         col = getattr(model,request.args['order_by'])
         if 'desc' in request.args:

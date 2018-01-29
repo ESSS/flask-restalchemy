@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 
 import pytest
 
@@ -85,3 +86,36 @@ def test_put(client):
     assert resp.status_code == 200
     emp3 = Employee.query.get(1)
     assert emp3.firstname == 'Jimmy'
+
+def test_filter(client):
+    for i in range(20):
+        client.post('/company', data={ 'name': 'Terrans {}'.format(i)})
+
+    response = client.get('/company')
+    dataList = response.parsed_data
+    assert len(dataList) == 21
+
+    response = client.get('/company?limit=5')
+    dataList = response.parsed_data
+    assert len(dataList) == 5
+
+    response = client.get('/company?filter={}'.format(json.dumps({"name": "Terrans 1"})))
+    dataList = response.parsed_data
+    assert len(dataList) == 1
+
+
+    response = client.get('/company?filter={}'.format(json.dumps({"name": { "in": ["Terrans 1", "Terrans 2"]}})))
+    dataList = response.parsed_data
+    assert len(dataList) == 2
+
+    response = client.get('/company?filter={}'.format(json.dumps({"name": {"endswith": '9'}})))
+    dataList = response.parsed_data
+    assert len(dataList) == 2
+
+    response = client.get('/company?filter={}'.format(json.dumps({"name": {"startswith": 'Terr'}})))
+    dataList = response.parsed_data
+    assert len(dataList) == 21
+
+    response = client.get('/company?limit=5&filter={}'.format(json.dumps({"name": {"startswith": 'Terr'}})))
+    dataList = response.parsed_data
+    assert len(dataList) == 5
