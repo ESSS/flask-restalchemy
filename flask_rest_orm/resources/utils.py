@@ -50,7 +50,7 @@ def get_operator(column, op_name, value):
             return column.between(value[0], value[1])
         return getattr(column, op)(value)
     else:
-        raise ValueError(f'Unknown operator {op_name}')
+        raise ValueError('Unknown operator {}'.format(op_name))
 
 
 def query_from_request(model, request):
