@@ -26,7 +26,7 @@ def test_resource_decorators(client, flask_app):
     assert client.get('/company', data={'name': 'Terran'}).status_code == 200
     assert client.post('/company', data={'name': 'Terran'}).status_code == 201
 
-    assert client.post('/address', data={'id': 2, 'steet': '5 Av'}, headers={'auth': True}).status_code == 201
+    assert client.post('/address', data={'id': 2, 'street': '5 Av'}, headers={'auth': True}).status_code == 201
     assert client.post('/company', data={'name': 'Terran'}, headers={'auth': True}).status_code == 201
     assert client.get('/address/2').status_code == 403
     assert client.get('/address/2', headers={'auth': True}).status_code == 200

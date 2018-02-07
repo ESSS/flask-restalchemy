@@ -27,8 +27,8 @@ def create_test_sample(db_session):
 def sample_api(flask_app):
     api = Api(flask_app)
     api.add_model(Company)
-    api.add_relation(Company.employees, serializer=EmployeeSerializer())
-    api.add_property(Employee, Employee, 'colleagues', serializer=EmployeeSerializer())
+    api.add_relation(Company.employees, serializer_class=EmployeeSerializer)
+    api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer)
     return api
 
 def test_get_collection(client):
