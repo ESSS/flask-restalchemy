@@ -1,22 +1,21 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 install_requires=[
     'flask-restful>=0.3.0',
     'flask-sqlalchemy >= 2.3.0',
-    'marshmallow-sqlalchemy >= 0.13.0',
 ]
 
 setup(
     name='flask-rest-orm',
-    version='0.3.0',
-    packages=['flask_rest_orm', 'flask_rest_orm.resources'],
+    version='0.4.0',
+    packages=find_packages(exclude=['*.tests']),
     url='https://github.com/ESSS/flask-rest-orm',
     license='MIT',
     author='ESSS Ltda',
     author_email='igor@esss.com.br',
     description='Flask extension to build REST APIs based on SQLAlchemy models ',
     keywords='flask sqlalchemy orm',
-    data_files = [("", ["LICENSE"])],
+    data_files=[("", ["LICENSE"])],
     install_requires=install_requires,
     classifiers=[
         'Development Status :: 3 - Alpha',
