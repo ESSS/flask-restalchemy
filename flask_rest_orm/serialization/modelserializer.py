@@ -99,7 +99,7 @@ class Field(object):
 
 class NestedModelField(Field):
     """
-    A field to Dump and Update nested models
+    A field to Dump and Update nested models.
     """
 
     def __init__(self, declarative_class, **kw):
@@ -110,7 +110,7 @@ class NestedModelField(Field):
 
 class NestedAttributesField(Field):
     """
-    A read-only field that dump nested object attributes (
+    A read-only field that dump nested object attributes.
     """
 
     class NestedAttrsSerializer(Serializer):
