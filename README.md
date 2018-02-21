@@ -2,9 +2,9 @@
 
 ![travis-ci](https://api.travis-ci.org/ESSS/flask-rest-orm.svg?branch=master)
 
-A Flask extension to build REST APIs based on SQLAlchemy models. It uses [marshmallow-sqlalchemy]
-to serialize models and avoid the need of building *Schema* classes, since *Schemas* are 
-typically a repetition of your model.
+A Flask extension to build REST APIs. It dismiss the need of building *Schema* classes, 
+since usually all the information needed to serialize an SQLAlchemy instance is in the model
+itself.
 
 By adding a model to the API, all its properties will be exposed:
 
@@ -28,19 +28,13 @@ To change the way properties are serialized, declare only the one that needs a n
 behaviour:
 
 ```python
-from marshmallow import fields
-from marshmallow_sqlalchemy import ModelSchema
+from flask_rest_orm import ModelSerializer, Field
 
-class UserSerializer(ModelSchema):
-    class Meta:
-        include_fk = True
-        model = User
+class UserSerializer(ModelSerializer):
         
-    password = fields.Str(load_only=True)
+    password = Field(load_only=True)
 
 
 api = Api(flask_app)
-api.add_model(User, '/user', serializer=UserSerializer())
+api.add_model(User, '/user', serializer_class=UserSerializer)
 ```
-
-[marshmallow-sqlalchemy]: https://marshmallow-sqlalchemy.readthedocs.io

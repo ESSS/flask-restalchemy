@@ -1,7 +1,6 @@
 from flask import request, json
 from flask_restful import Resource
-from marshmallow_sqlalchemy import ModelSchema
-
+from flask_rest_orm.serialization.modelserializer import ModelSerializer
 from .utils import query_from_request
 
 
@@ -22,24 +21,24 @@ class BaseResource(Resource):
         self._resource_model = declarative_model
         self._serializer = serializer
         self._serializer.strict = True
-        assert isinstance(self._serializer, ModelSchema), 'Invalid serializer instance: {}'.format(serializer)
+        assert isinstance(self._serializer, ModelSerializer), 'Invalid serializer instance: {}'.format(serializer)
         self._session_getter = session_getter
 
     def save_from_request(self, extra_attrs={}):
         session = self._session_getter()
-        model_obj = self._serializer.load(load_request_data(), session).data
+        model_obj = self._serializer.load(load_request_data())
         for attr_name, value in extra_attrs.items():
             setattr(model_obj, attr_name, value)
         session.add(model_obj)
         session.commit()
         return self._serializer.dump(model_obj).data
 
-    def _save_serialized(self, serialized_data):
+    def _save_serialized(self, serialized_data, existing_model=None):
         session = self._session_getter()
-        model_obj = self._serializer.load(serialized_data, session).data
+        model_obj = self._serializer.load(serialized_data, existing_model)
         session.add(model_obj)
         session.commit()
-        return self._serializer.dump(model_obj).data
+        return self._serializer.dump(model_obj)
 
     @property
     def _db_session(self):
@@ -56,15 +55,15 @@ class ItemResource(BaseResource):
         data = self._resource_model.query.get(id)
         if data is None:
             return NOT_FOUND_ERROR, 404
-        return self._serializer.dump(data).data
+        return self._serializer.dump(data)
 
     def put(self, id):
         data = self._resource_model.query.get(id)
         if data is None:
             return NOT_FOUND_ERROR, 404
-        serialized = self._serializer.dump(data).data
+        serialized = self._serializer.dump(data)
         serialized.update(load_request_data())
-        self._save_serialized(serialized)
+        self._save_serialized(serialized, data)
         return serialized
 
     def delete(self, id):
@@ -87,7 +86,7 @@ class CollectionResource(BaseResource):
         collection = []
         data = query_from_request(self._resource_model, request)
         for item in data:
-            collection.append(self._serializer.dump(item).data)
+            collection.append(self._serializer.dump(item))
         return collection
 
     def post(self):
@@ -127,7 +126,7 @@ class CollectionRelationResource(BaseResource):
             return NOT_FOUND_ERROR, 404
         # TODO: Is there a more efficient way than using getattr?
         data = getattr(related_obj, self._relation_property.key)
-        collection = [self._serializer.dump(item).data for item in data]
+        collection = [self._serializer.dump(item) for item in data]
         return collection
 
 
@@ -137,11 +136,11 @@ class CollectionRelationResource(BaseResource):
         if not related_obj:
             return NOT_FOUND_ERROR, 404
         collection = getattr(related_obj, self._relation_property.key)
-        new_obj = self._serializer.load(load_request_data(), session).data
+        new_obj = self._serializer.load(load_request_data())
         collection.append(new_obj)
         session.add(new_obj)
         session.commit()
-        return self._serializer.dump(new_obj).data, 201
+        return self._serializer.dump(new_obj), 201
 
 
 class ItemRelationResource(BaseResource):
@@ -172,15 +171,15 @@ class ItemRelationResource(BaseResource):
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
-        return self._serializer.dump(requested_obj).data, 200
+        return self._serializer.dump(requested_obj), 200
 
     def put(self, relation_id, id):
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
-        serialized = self._serializer.dump(requested_obj).data
+        serialized = self._serializer.dump(requested_obj)
         serialized.update(load_request_data())
-        return self._save_serialized(serialized)
+        return self._save_serialized(serialized, requested_obj)
 
     def delete(self, relation_id, id):
         requested_obj = self._query_related_obj(relation_id, id)
@@ -212,7 +211,7 @@ class CollectionPropertyResource(CollectionRelationResource):
         if related_obj is None:
             return NOT_FOUND_ERROR, 404
         data = getattr(related_obj, self._property_name)
-        collection = [self._serializer.dump(item).data for item in data]
+        collection = [self._serializer.dump(item) for item in data]
         return collection
 
     def post(self, relation_id):
