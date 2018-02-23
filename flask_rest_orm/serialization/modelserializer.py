@@ -17,7 +17,7 @@ class ModelSerializer(Serializer):
         columns = declarative_class.__mapper__.c
         if self.__class__ is not ModelSerializer:
             # Collect Fields defined in subclasses
-            for attr_name in self.__class__.__dict__:
+            for attr_name in dir(self.__class__):
                 if attr_name.startswith('_'):
                     continue
                 value = getattr(self, attr_name)
