@@ -1,4 +1,5 @@
 from sqlalchemy import DateTime
+from sqlalchemy.orm.dynamic import AppenderMixin
 
 from flask_rest_orm.serialization.serializer import Serializer, DateTimeSerializer
 
@@ -28,7 +29,7 @@ class ModelSerializer(Serializer):
             field = self._fields.setdefault(column, Field())
             # Set a serializer for fields that can not be serialized by default
             if field.serializer is None and type(columns[column].type) is DateTime:
-                field.serializer = DateTimeSerializer()
+                field._serializer = DateTimeSerializer()
 
     def dump(self, model):
         serial = {}
@@ -94,7 +95,11 @@ class Field(object):
     def __init__(self, dump_only=False, load_only=False, serializer=None):
         self.dump_only = dump_only
         self.load_only = load_only
-        self.serializer = serializer
+        self._serializer = serializer
+
+    @property
+    def serializer(self):
+        return self._serializer
 
 
 class NestedModelField(Field):
@@ -104,8 +109,8 @@ class NestedModelField(Field):
 
     def __init__(self, declarative_class, **kw):
         super().__init__(**kw)
-        if self.serializer is None:
-            self.serializer = ModelSerializer(declarative_class)
+        if self._serializer is None:
+            self._serializer = ModelSerializer(declarative_class)
 
 
 class NestedAttributesField(Field):
@@ -119,7 +124,7 @@ class NestedAttributesField(Field):
             self._attr_list = attr_list
 
         def dump(self, value):
-            if isinstance(value, list):
+            if is_tomany_attribute(value):
                 serialized = [self._dump_item(item) for item in value]
             else:
                 return self._dump_item(value)
@@ -138,3 +143,55 @@ class NestedAttributesField(Field):
     def __init__(self, attr_list, **kw):
         super().__init__(serializer=self.NestedAttrsSerializer(attr_list), **kw)
         assert 'serializer' not in kw, "NestedAttrsField does not support custom Serializer"
+
+
+class PrimaryKeyField(Field):
+    """
+    Convert relationships in a list of primary keys (for serialization and deserialization).
+    """
+
+    class PrimaryKeySerializer(Serializer):
+
+        def __init__(self, declarative_class):
+            self.declarative_class = declarative_class
+            self._pk_column = get_model_pk(self.declarative_class)
+
+        def load(self, serialized):
+            pk_column = self._pk_column
+            return self.declarative_class.query.filter(pk_column.in_(serialized)).all()
+
+        def dump(self, value):
+            pk_column = self._pk_column
+            if is_tomany_attribute(value):
+                serialized = [getattr(item, pk_column.key) for item in value]
+            else:
+                return getattr(value, pk_column.key)
+            return serialized
+
+
+    def __init__(self, declarative_class, **kw):
+        super().__init__(serializer=self.PrimaryKeySerializer(declarative_class), **kw)
+
+
+def get_model_pk(declarative_class):
+    """
+    Get the primary key Column object from a Declarative model class
+
+    :param Type[DeclarativeMeta] declarative_class: a Declarative class
+
+    :rtype: Column
+    """
+    primary_keys = declarative_class.__mapper__.primary_key
+    assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
+    return primary_keys[0]
+
+
+def is_tomany_attribute(value):
+    """
+    Check if the Declarative relationship attribute represents a to-many relationship.
+
+    :param value: a SQLAlchemy Declarative class relationship attribute
+
+    :rtype: bool
+    """
+    return isinstance(value, (list, AppenderMixin))
