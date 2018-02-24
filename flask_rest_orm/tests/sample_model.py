@@ -16,7 +16,8 @@ class Company(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    employees = relationship("Employee")
+    location = Column(String)
+    employees = relationship("Employee", lazy='dynamic')
 
 
 class Department(Base):
