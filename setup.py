@@ -17,6 +17,7 @@ setup(
     keywords='flask sqlalchemy orm',
     data_files=[("", ["LICENSE"])],
     install_requires=install_requires,
+    python_requires='>=3.4',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
@@ -24,6 +25,7 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Database :: Front-Ends',
         'Topic :: Internet :: WWW/HTTP',
     ],

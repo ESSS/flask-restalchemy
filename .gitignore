@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 .*cache
+*.egg-info
 .~*
 *.py[cod]
 *$py.class
@@ -9,3 +10,6 @@ dist/
 
 # Project settings
 /.idea/
+
+# Rever
+rever/
