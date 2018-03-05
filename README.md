@@ -38,3 +38,19 @@ class UserSerializer(ModelSerializer):
 api = Api(flask_app)
 api.add_model(User, '/user', serializer_class=UserSerializer)
 ```
+### Creating a new release
+
+We are using [rever](https://github.com/regro/rever) to release new versions of the package. Rever
+automatically create project tags on GitHub, build and upload the PyPI package and change the recipe
+on conda-forge. Just type:
+
+```
+rever setup  # (first time only)
+
+rever <version>  # In the format 0.0.0
+```
+
+Some preconditions:
+
+* Repository remote must be set using SSH protocol
+* PyPI config file `.pypirc` must be on $HOME with the parameter `username` defined
