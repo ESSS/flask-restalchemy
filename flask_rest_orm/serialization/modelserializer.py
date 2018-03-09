@@ -28,7 +28,7 @@ class ModelSerializer(Serializer):
         for column in columns.keys():
             field = self._fields.setdefault(column, Field())
             # Set a serializer for fields that can not be serialized by default
-            if field.serializer is None and type(columns[column].type) is DateTime:
+            if field.serializer is None and is_datetime_field(columns[column]):
                 field._serializer = DateTimeSerializer()
 
     def dump(self, model):
@@ -195,3 +195,17 @@ def is_tomany_attribute(value):
     :rtype: bool
     """
     return isinstance(value, (list, AppenderMixin))
+
+
+def is_datetime_field(col):
+    """
+    Check if a column is DateTime (or implements DateTime)
+
+    :param Column col: the column object to be checked
+
+    :rtype: bool
+    """
+    if hasattr(col.type, "impl"):
+        return type(col.type.impl) is DateTime
+    else:
+        return type(col.type) is DateTime
