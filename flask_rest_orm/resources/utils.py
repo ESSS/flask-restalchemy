@@ -1,4 +1,4 @@
-from sqlalchemy import desc
+from sqlalchemy import desc, or_, and_
 import json
 import operator
 
@@ -75,16 +75,20 @@ def query_from_request(model, request):
     """
     query = model.query
 
-    def build_query(column, request_filter):
+    def build_filter_operator(column_name, request_filter):
+        if column_name == '$or':
+            return or_(build_filter_operator(attr, value) for attr, value in request_filter.items())
+        elif column_name == '$and':
+            return and_(build_filter_operator(attr, value) for attr, value in request_filter.items())
         if isinstance(request_filter, dict):
             op_name = next(iter(request_filter))
-            return query.filter(get_operator(column, op_name, request_filter.get(op_name)))
-        return query.filter(get_operator(column, None, request_filter))
+            return get_operator(getattr(model, column_name), op_name, request_filter.get(op_name))
+        return get_operator(getattr(model, column_name), None, request_filter)
 
     if 'filter' in request.args:
         filters = json.loads(request.args['filter'])
         for attr, value in filters.items():
-            query = build_query(getattr(model, attr), value)
+            query = query.filter(build_filter_operator(attr, value))
     if 'limit' in request.args:
         limit = request.args['limit']
         query = query.limit(limit)
@@ -97,5 +101,5 @@ def query_from_request(model, request):
     if 'page' not in request.args:
         resources = query.all()
     else:
-        resources = query.paginate().items
+        resources = query.paginate()
     return resources
