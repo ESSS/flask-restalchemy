@@ -7,7 +7,7 @@ install_requires=[
 
 setup(
     name='flask-rest-orm',
-    version='0.4.3',
+    version='0.5.0',
     packages=find_packages(exclude=['*.tests']),
     url='https://github.com/ESSS/flask-rest-orm',
     license='MIT',
