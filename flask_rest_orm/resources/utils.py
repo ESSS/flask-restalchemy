@@ -56,7 +56,12 @@ def get_operator(column, op_name, value):
 def query_from_request(model, request):
     """
     Perform a filtered search in the database model table using query parameters in the http URL,
-    disposed on the request args.
+    disposed on the request args. The default logical operator is AND, but you can set the OR as
+    in the following examples:
+
+        a) OR -> ?filter={"$or":{"name": {"startswith": "Terrans 1"},"location": "Location 1"}}
+        b) AND -> ?filter={"$and":{"name": {"ilike": "%Terrans 1%"},"location": "Location 1"}}
+            or ?filter={"name": {"ilike": "%Terrans 1%"},"location": {"eq": "Location 1"}}
 
     It also paginate the response if a 'page' value is present in the query parameters. A 'per_page'
     value in the query parameters defines the page length, default to 20 items.
