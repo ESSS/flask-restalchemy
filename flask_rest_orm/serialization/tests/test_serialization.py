@@ -61,7 +61,7 @@ def test_serialization(serializer_class):
     serialized_dict = serializer.dump(emp)
     assert serialized_dict["firstname"] == emp.firstname
     assert serialized_dict["lastname"] == emp.lastname
-    assert serialized_dict["created_at"] == "2000-01-02T00:00:00"
+    assert serialized_dict["created_at"] == "2000-01-02T00:00:00Z"
     assert serialized_dict["company_id"] == 5
     assert serialized_dict["company"]["name"] == "Terrans"
     assert serialized_dict["company"]["location"] == "Korhal"

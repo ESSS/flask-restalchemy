@@ -26,7 +26,7 @@ class DateTimeSerializer(Serializer):
 
 
     def dump(self, value):
-        return value.isoformat()
+        return value.isoformat() + 'Z'
 
     def load(self, serialized):
         match = self.DATETIME_RE.match(serialized)

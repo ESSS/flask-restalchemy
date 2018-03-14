@@ -1,5 +1,7 @@
 from flask import request, json
 from flask_restful import Resource
+from flask_sqlalchemy import Pagination
+
 from flask_rest_orm.serialization.modelserializer import ModelSerializer
 from .utils import query_from_request
 
@@ -83,11 +85,17 @@ class CollectionResource(BaseResource):
     """
 
     def get(self):
-        collection = []
         data = query_from_request(self._resource_model, request)
-        for item in data:
-            collection.append(self._serializer.dump(item))
-        return collection
+        if isinstance(data, Pagination):
+            return {
+                'page': data.page,
+                'per_page': data.per_page,
+                'count': data.total,
+                'results': [self._serializer.dump(item) for item in data.items]
+            }
+        else:
+            return [self._serializer.dump(item) for item in data]
+
 
     def post(self):
         saved = self._save_serialized(load_request_data())

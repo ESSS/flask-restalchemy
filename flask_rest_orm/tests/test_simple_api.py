@@ -36,7 +36,7 @@ def test_get(client):
     serialized = resp.parsed_data
     assert serialized['firstname'] == expected_employee.firstname
     assert serialized['lastname'] == expected_employee.lastname
-    assert serialized['created_at'] == '2000-01-02T00:00:00'
+    assert serialized['created_at'] == '2000-01-02T00:00:00Z'
     assert 'password' not in serialized
     assert serialized['company_id'] == expected_employee.company_id
     assert serialized['company_name'] == Company.query.get(expected_employee.company_id).name
@@ -84,7 +84,7 @@ def test_put(client):
 
 def test_filter(client):
     for i in range(20):
-        client.post('/company', data={ 'name': 'Terrans {}'.format(i)})
+        client.post('/company', data={ 'name': 'Terrans {}'.format(i), 'location': 'Location {}'.format(20 - i)})
 
     response = client.get('/company')
     dataList = response.parsed_data
@@ -102,6 +102,32 @@ def test_filter(client):
     dataList = response.parsed_data
     assert len(dataList) == 1
 
+
+    response = client.get('/company?filter={}'.format(json.dumps({
+        "$or": {
+            "name": {"eq": "Terrans 1"},
+            "location": "Location 1"
+        }
+    })))
+    dataList = response.parsed_data
+    assert len(dataList) == 2
+
+    # test if AND is the default Logical Operator
+    response = client.get('/company?filter={}'.format(json.dumps({
+        "name": {"eq": "Terrans 1"},
+        "location": "Location 1"
+    })))
+    dataList = response.parsed_data
+    assert len(dataList) == 0
+
+    response = client.get('/company?filter={}'.format(json.dumps({
+        "$and": {
+            "name": {"eq": "Terrans 10"},
+            "location": "Location 10"
+        }
+    })))
+    dataList = response.parsed_data
+    assert len(dataList) == 1
 
     response = client.get('/company?filter={}'.format(json.dumps({"name": { "in": ["Terrans 1", "Terrans 2"]}})))
     dataList = response.parsed_data
@@ -121,3 +147,20 @@ def test_filter(client):
 
     with pytest.raises(ValueError, message='Unknown operator unknown_operator'):
         client.get('/company?filter={}'.format(json.dumps({"name": {"unknown_operator": 'Terr'}})))
+
+
+def test_pagination(client):
+    for i in range(20):
+        client.post('/company', data={ 'name': 'Terrans {}'.format(i)})
+
+    response = client.get('/company?page=1&per_page=50')
+    dataList = response.parsed_data
+    assert len(dataList.get('results')) == 21
+
+    response = client.get('/company?page=1&per_page=5')
+    dataList = response.parsed_data
+    assert len(dataList.get('results')) == 5
+
+    response = client.get('/company?page=5&per_page=5')
+    dataList = response.parsed_data
+    assert len(dataList.get('results')) == 1
