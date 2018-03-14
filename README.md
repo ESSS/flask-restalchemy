@@ -52,5 +52,13 @@ rever <version>  # In the format 0.0.0
 
 Some preconditions:
 
+* flask-rest-orm-feedstock must be forked under your github account
 * Repository remote must be set using SSH protocol
-* PyPI config file `.pypirc` must be on $HOME with the parameter `username` defined
+* PyPI config file `.pypirc` must be on $HOME with the following parameters:
+```
+[pypi]
+username = <username>
+
+[distutils]
+index-servers = pypi
+```
