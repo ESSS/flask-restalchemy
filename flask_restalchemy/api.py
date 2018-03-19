@@ -1,8 +1,8 @@
 from flask_restful import Api as RestfulApi
 
-from flask_rest_orm.resources.resources import CollectionResource, ItemResource, CollectionRelationResource, \
+from flask_restalchemy.resources.resources import CollectionResource, ItemResource, CollectionRelationResource, \
     ItemRelationResource, CollectionPropertyResource
-from flask_rest_orm.serialization.modelserializer import ModelSerializer
+from flask_restalchemy.serialization.modelserializer import ModelSerializer
 
 
 class Api(object):

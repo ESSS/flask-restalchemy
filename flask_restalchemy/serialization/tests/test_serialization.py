@@ -2,9 +2,9 @@ import datetime
 
 import pytest
 
-from flask_rest_orm import PrimaryKeyField
-from flask_rest_orm.serialization.modelserializer import ModelSerializer, Field, NestedModelField, NestedAttributesField
-from flask_rest_orm.tests.sample_model import Employee, Company, Address, Department
+from flask_restalchemy import PrimaryKeyField
+from flask_restalchemy.serialization.modelserializer import ModelSerializer, Field, NestedModelField, NestedAttributesField
+from flask_restalchemy.tests.sample_model import Employee, Company, Address, Department
 
 
 class EmployeeSerializerNestedModelFields(ModelSerializer):

@@ -1,7 +1,7 @@
 import pytest
 
-from flask_rest_orm import Api
-from flask_rest_orm.tests.sample_model import Employee, Company, EmployeeSerializer, Department
+from flask_restalchemy import Api
+from flask_restalchemy.tests.sample_model import Employee, Company, EmployeeSerializer, Department
 
 
 @pytest.fixture(autouse=True)

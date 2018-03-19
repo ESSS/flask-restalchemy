@@ -2,7 +2,7 @@ from flask import request, json
 from flask_restful import Resource
 from flask_sqlalchemy import Pagination
 
-from flask_rest_orm.serialization.modelserializer import ModelSerializer
+from flask_restalchemy.serialization.modelserializer import ModelSerializer
 from .utils import query_from_request
 
 

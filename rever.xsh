@@ -3,9 +3,9 @@
 # - Set GitHub to work using ssh protocol
 # - Define a .pypirc file on $HOME (so rever can upload release packages)
 
-$PROJECT = 'flask-rest-orm'
+$PROJECT = 'flask-restalchemy'
 $GITHUB_ORG = 'ESSS'
-$GITHUB_REPO = 'flask-rest-orm'
+$GITHUB_REPO = 'flask-restalchemy'
 
 $ACTIVITIES = [
               'version_bump',

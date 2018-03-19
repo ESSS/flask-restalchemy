@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from flask_rest_orm import Api
-from flask_rest_orm.tests.sample_model import Employee, Company, Address, EmployeeSerializer
+from flask_restalchemy import Api
+from flask_restalchemy.tests.sample_model import Employee, Company, Address, EmployeeSerializer
 
 
 @pytest.fixture(autouse=True)

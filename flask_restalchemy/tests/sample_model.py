@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, select, Table
 from sqlalchemy.orm import relationship, column_property, object_session
 
-from flask_rest_orm import ModelSerializer, NestedModelField, Field
+from flask_restalchemy import ModelSerializer, NestedModelField, Field
 
 db = SQLAlchemy()
 Base = db.Model

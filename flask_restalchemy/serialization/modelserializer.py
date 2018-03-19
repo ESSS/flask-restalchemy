@@ -1,7 +1,7 @@
 from sqlalchemy import DateTime
 from sqlalchemy.orm.dynamic import AppenderMixin
 
-from flask_rest_orm.serialization.serializer import Serializer, DateTimeSerializer
+from flask_restalchemy.serialization.serializer import Serializer, DateTimeSerializer
 
 
 class ModelSerializer(Serializer):
