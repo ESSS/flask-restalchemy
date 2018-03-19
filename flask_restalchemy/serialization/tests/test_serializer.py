@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 
-from flask_rest_orm import DateTimeSerializer
+from flask_restalchemy import DateTimeSerializer
 
 
 @pytest.mark.parametrize("serialized_date", [

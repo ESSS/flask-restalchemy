@@ -1,6 +1,6 @@
-# Flask-REST-ORM #
+# Flask-RESTAlchemy #
 
-![travis-ci](https://api.travis-ci.org/ESSS/flask-rest-orm.svg?branch=master)
+![travis-ci](https://api.travis-ci.org/ESSS/flask-restalchemy.svg?branch=master)
 
 A Flask extension to build REST APIs. It dismiss the need of building *Schema* classes, 
 since usually all the information needed to serialize an SQLAlchemy instance is in the model
@@ -52,7 +52,7 @@ rever <version>  # In the format 0.0.0
 
 Some preconditions:
 
-* flask-rest-orm-feedstock must be forked under your github account
+* flask-restalchemy-feedstock must be forked under your github account
 * Repository remote must be set using SSH protocol
 * PyPI config file `.pypirc` must be on $HOME with the following parameters:
 ```

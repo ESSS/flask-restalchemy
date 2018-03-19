@@ -6,10 +6,10 @@ install_requires=[
 ]
 
 setup(
-    name='flask-rest-orm',
+    name='flask-restalchemy',
     version='0.5.0',
     packages=find_packages(exclude=['*.tests']),
-    url='https://github.com/ESSS/flask-rest-orm',
+    url='https://github.com/ESSS/flask-restalchemy',
     license='MIT',
     author='ESSS Ltda',
     author_email='igor@esss.com.br',
