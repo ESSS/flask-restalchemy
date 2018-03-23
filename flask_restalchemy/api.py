@@ -180,7 +180,10 @@ class Api(object):
 
     def init_app(self, app):
         self.restful_api.init_app(app)
-        self._db = app.extensions['sqlalchemy'].db
+        try:
+            self._db = app.extensions['sqlalchemy'].db
+        except KeyError:
+            raise RuntimeError('Could not find SQLAlchemy Flask extension. Try to call "db.init_app(app)" first')
 
     def get_db_session(self):
         return self._db.session
