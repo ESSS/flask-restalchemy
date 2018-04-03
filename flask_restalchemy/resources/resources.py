@@ -35,11 +35,26 @@ class BaseResource(Resource):
         session.commit()
         return self._serializer.dump(model_obj).data
 
-    def _save_serialized(self, serialized_data, existing_model=None):
+    def commit_model(self, model_obj, method):
         session = self._session_getter()
-        model_obj = self._serializer.load(serialized_data, existing_model)
         session.add(model_obj)
+
+        # run pre commit hooks
+        if method == 'POST':
+            self._serializer.before_post_commit(model_obj, session)
+
         session.commit()
+
+        # run pos commit hooks
+        if method == 'POST':
+            self._serializer.after_post_commit(model_obj, session)
+
+    def _save_serialized(self, serialized_data, existing_model=None):
+        model_obj = self._serializer.load(serialized_data, existing_model)
+
+        method = 'PUT' if existing_model else 'POST'
+        self.commit_model(model_obj, method)
+
         return self._serializer.dump(model_obj)
 
     @property
@@ -146,8 +161,8 @@ class CollectionRelationResource(BaseResource):
         collection = getattr(related_obj, self._relation_property.key)
         new_obj = self._serializer.load(load_request_data())
         collection.append(new_obj)
-        session.add(new_obj)
-        session.commit()
+
+        self.commit_model(new_obj, 'POST')
         return self._serializer.dump(new_obj), 201
 
 
