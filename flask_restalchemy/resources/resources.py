@@ -53,7 +53,7 @@ class BaseResource(Resource):
         model_obj = self._serializer.load(serialized_data, existing_model)
 
         method = 'PUT' if existing_model else 'POST'
-        self.commit_model(model_obj, method)
+        self._save_model(model_obj, method)
 
         return self._serializer.dump(model_obj)
 
@@ -162,7 +162,7 @@ class CollectionRelationResource(BaseResource):
         new_obj = self._serializer.load(load_request_data())
         collection.append(new_obj)
 
-        self.commit_model(new_obj, 'POST')
+        self._save_model(new_obj, 'POST')
         return self._serializer.dump(new_obj), 201
 
 
