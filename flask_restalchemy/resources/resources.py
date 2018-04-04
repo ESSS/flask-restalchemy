@@ -35,7 +35,7 @@ class BaseResource(Resource):
         session.commit()
         return self._serializer.dump(model_obj).data
 
-    def commit_model(self, model_obj, method):
+    def _save_model(self, model_obj, method):
         session = self._session_getter()
         session.add(model_obj)
 
