@@ -31,6 +31,12 @@ class ModelSerializer(Serializer):
             if field.serializer is None and is_datetime_field(columns[column]):
                 field._serializer = DateTimeSerializer()
 
+    def before_post_commit(self, model, session):
+        pass
+
+    def after_post_commit(self, model, session):
+        pass
+
     def dump(self, model):
         serial = {}
         for attr, field in self._fields.items():
