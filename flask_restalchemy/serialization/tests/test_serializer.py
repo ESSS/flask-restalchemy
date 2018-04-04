@@ -20,7 +20,7 @@ def test_datetime_with_sec_tz():
     serializer = DateTimeSerializer()
     assert datetime(1994, 7, 17, 20, 53, 12, tzinfo=timezone.utc) == serializer.load("1994-07-17T20:53:12+0000")
     assert datetime(1994, 7, 17, 20, 53, 12, tzinfo=timezone.utc) == serializer.load("1994-07-17T20:53:12Z")
-    assert "1994-07-17T20:53:12+00:00Z" == serializer.dump(serializer.load("1994-07-17T20:53:12Z"))
+    assert "1994-07-17T20:53:12+00:00" == serializer.dump(serializer.load("1994-07-17T20:53:12Z"))
 
     assert datetime(1994, 7, 17, 20, 53, 12, 302) == serializer.load("1994-07-17T20:53:12.302")
 
