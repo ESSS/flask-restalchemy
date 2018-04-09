@@ -1,8 +1,7 @@
 from datetime import datetime, timezone, timedelta
 
 import pytest
-from sqlalchemy import Column
-from sqlalchemy_utc import UtcDateTime
+from sqlalchemy import Column, DateTime
 
 from flask_restalchemy import DateTimeSerializer
 
@@ -13,12 +12,12 @@ from flask_restalchemy import DateTimeSerializer
     "1994-07-17T20:53:00.000"
 ])
 def test_datetime(serialized_date):
-    serializer = DateTimeSerializer(Column(UtcDateTime))
+    serializer = DateTimeSerializer(Column(DateTime))
     date_obj = datetime(1994, 7, 17, 20, 53)
     assert date_obj == serializer.load(serialized_date)
 
 def test_datetime_with_sec_tz():
-    serializer = DateTimeSerializer(Column(UtcDateTime))
+    serializer = DateTimeSerializer(Column(DateTime))
     assert datetime(1994, 7, 17, 20, 53, 12, tzinfo=timezone.utc) == serializer.load("1994-07-17T20:53:12+0000")
     assert datetime(1994, 7, 17, 20, 53, 12, tzinfo=timezone.utc) == serializer.load("1994-07-17T20:53:12Z")
     assert "1994-07-17T20:53:12+00:00" == serializer.dump(serializer.load("1994-07-17T20:53:12Z"))
