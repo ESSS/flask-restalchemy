@@ -100,7 +100,7 @@ class CollectionResource(BaseResource):
     """
 
     def get(self):
-        data = query_from_request(self._resource_model, request)
+        data = query_from_request(self._resource_model, self._serializer, request)
         if isinstance(data, Pagination):
             return {
                 'page': data.page,

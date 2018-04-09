@@ -1,9 +1,13 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone, timedelta
+from sqlalchemy import DateTime
 import re
 
 
 class Serializer(ABC):
+
+    def __init__(self, column):
+        self.column = column
 
     @abstractmethod
     def dump(self, value): pass
@@ -52,3 +56,17 @@ class DateTimeSerializer(Serializer):
             if offset_str[0] == "-" and hours == 0:
                 minutes = -minutes
             return timezone(timedelta(hours=hours, minutes=minutes))
+
+
+def is_datetime_field(col):
+    """
+    Check if a column is DateTime (or implements DateTime)
+
+    :param Column col: the column object to be checked
+
+    :rtype: bool
+    """
+    if hasattr(col.type, "impl"):
+        return type(col.type.impl) is DateTime
+    else:
+        return type(col.type) is DateTime
