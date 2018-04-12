@@ -1,0 +1,3 @@
+Added:
+
+* Support Flask Blueprints
