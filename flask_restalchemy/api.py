@@ -7,12 +7,26 @@ from flask_restalchemy.serialization.modelserializer import ModelSerializer
 
 class Api(object):
 
-    def __init__(self, app=None, prefix='', errors=None, request_decorators=None):
-        self.restful_api = RestfulApi(app=app, prefix=prefix, decorators=request_decorators,
+    def __init__(self, app_or_bp=None, prefix='', errors=None, request_decorators=None):
+        """
+        :param (Flask|Blueprint) app_or_bp: Flask application or Blueprint
+
+        :param str prefix: API endpoints prefix
+
+        :param errors: A dictionary to define a custom response for each
+            exception or error raised during a request
+
+        :param callable request_decorators: request decorators for this API object (see
+            Flask-Restful decorators docs for more information)
+        """
+        self.restful_api = RestfulApi(app=app_or_bp, prefix=prefix, decorators=request_decorators,
                                       default_mediatype='application/json', errors=errors)
+        if app_or_bp:
+            self.init_app(app_or_bp)
         self._db = None
-        if app:
-            self.init_app(app)
+
+    def init_app(self, app):
+        self.restful_api.init_app(app)
 
     def add_model(self, model, url=None, serializer_class=None, request_decorators=None,
                   collection_decorators=None, collection_name=None):
@@ -178,9 +192,17 @@ class Api(object):
         """
         return ModelSerializer(model_class)
 
-    def init_app(self, app):
-        self.restful_api.init_app(app)
-        self._db = app.extensions['sqlalchemy'].db
-
     def get_db_session(self):
+        """
+        Returns an SQLAlchemy object session. Used by flask-restful Resources to access
+        the database.
+        """
+        if not self._db:
+            # Get the Flask application
+            if self.restful_api.blueprint_setup:
+                flask_app = self.restful_api.blueprint_setup.app
+            else:
+                flask_app = self.restful_api.app
+            assert flask_app and flask_app.extensions, "Flask App not initialized yey"
+            self._db = flask_app.extensions['sqlalchemy'].db
         return self._db.session
