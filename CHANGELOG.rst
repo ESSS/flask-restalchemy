@@ -7,7 +7,9 @@ Flask-RESTAlchemy Change Log
 v0.8.1
 ====================
 
+**Added:**
 
+* Support Flask Blueprints
 
 v0.8.0
 ====================
