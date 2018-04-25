@@ -215,9 +215,15 @@ class ItemRelationResource(BaseResource):
 
     def _query_related_obj(self, relation_id, id):
         # Query resource model by ID but also add the relationship as a query constrain.
-        return self._db_session.query(self._resource_model).filter(
-            self._resource_model.id == id,
-            self._relation_property.any(self._related_model.id == relation_id, id=id),
+        if hasattr(self._relation_property.expression, 'right'):
+            return self._db_session.query(self._resource_model).filter(
+                self._resource_model.id == id,
+                self._relation_property.expression.right == relation_id,
+            ).one_or_none()
+        else:
+            return self._db_session.query(self._resource_model).filter(
+                self._resource_model.id == id,
+                self._relation_property.any(self._related_model.id == relation_id, id=id),
             ).one_or_none()
 
 
