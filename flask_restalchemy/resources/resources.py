@@ -101,15 +101,7 @@ class CollectionResource(BaseResource):
 
     def get(self):
         data = query_from_request(self._resource_model, self._serializer, request)
-        if isinstance(data, Pagination):
-            return {
-                'page': data.page,
-                'per_page': data.per_page,
-                'count': data.total,
-                'results': [self._serializer.dump(item) for item in data.items]
-            }
-        else:
-            return [self._serializer.dump(item) for item in data]
+        return data
 
 
     def post(self):

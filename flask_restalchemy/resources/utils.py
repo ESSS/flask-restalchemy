@@ -67,7 +67,7 @@ def get_field_serializer_or_none(serializer, field_name):
     return field.serializer
 
 
-def query_from_request(model, model_serializer, request):
+def query_from_request(model, model_serializer, request, query=None):
     """
     Perform a filtered search in the database model table using query parameters in the http URL,
     disposed on the request args. The default logical operator is AND, but you can set the OR as
@@ -86,13 +86,20 @@ def query_from_request(model, model_serializer, request):
     :param class model:
         SQLAlchemy model class representing a database resource
 
+    :param model_serializer:
+        instance of model serializer
+
     :param request:
         Flask http request data
 
-    :rtype: list
-    :return: the items for the current page
+    :param query:
+        SQLAlchemy query instance
+
+    :rtype: list or dict (pagination)
+    :return: the serialized response with the list or the page of items
     """
-    query = model.query
+    if not query:
+        query = model.query
 
     def build_filter_operator(column_name, request_filter, serializer):
         if column_name == '$or':
@@ -119,8 +126,14 @@ def query_from_request(model, model_serializer, request):
             query = query.order_by(desc(col))
         else:
             query = query.order_by(col)
-    if 'page' not in request.args:
-        resources = query.all()
-    else:
-        resources = query.paginate()
-    return resources
+    if 'page' in request.args:
+        data = query.paginate()
+        return {
+            'page': data.page,
+            'per_page': data.per_page,
+            'count': data.total,
+            'results': [model_serializer.dump(item) for item in data.items]
+        }
+
+    data = query.all()
+    return [model_serializer.dump(item) for item in data]
