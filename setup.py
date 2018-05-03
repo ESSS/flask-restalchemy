@@ -7,7 +7,7 @@ install_requires=[
 
 setup(
     name='flask-restalchemy',
-    version='0.8.1',
+    version='0.8.2',
     packages=find_packages(exclude=['*.tests']),
     url='https://github.com/ESSS/flask-restalchemy',
     license='MIT',
