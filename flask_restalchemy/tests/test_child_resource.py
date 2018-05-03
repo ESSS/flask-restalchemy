@@ -29,6 +29,7 @@ def sample_api(flask_app):
     api.add_model(Company)
     api.add_relation(Company.employees, serializer_class=EmployeeSerializer)
     api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer)
+    api.add_relation(Employee.departments)
     return api
 
 def test_get_collection(client):
@@ -71,6 +72,26 @@ def test_delete(client):
     assert jim is not None
 
     resp = client.delete('/company/3/employee/9')
+    assert resp.status_code == 204
+
+
+def test_delete_on_relation_with_secondary(client):
+    jim = Employee.query.get(9)
+    assert jim is not None
+    assert len(jim.departments) > 0
+    dep = jim.departments[0]
+
+    sarah = Employee.query.get(3)
+    assert jim is not None
+    assert dep not in sarah.departments
+
+    resp = client.get('/employee/3/department')
+    assert resp.status_code == 200
+
+    resp = client.delete('/employee/3/department/' + str(dep.id))
+    assert resp.status_code == 404
+
+    resp = client.delete('/employee/9/department/'+str(dep.id))
     assert resp.status_code == 204
 
 

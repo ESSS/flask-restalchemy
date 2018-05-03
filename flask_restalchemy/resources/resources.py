@@ -214,10 +214,26 @@ class ItemRelationResource(BaseResource):
         return '', 204
 
     def _query_related_obj(self, relation_id, id):
-        # Query resource model by ID but also add the relationship as a query constrain.
-        return self._db_session.query(self._resource_model).filter(
-            self._resource_model.id == id,
-            self._relation_property.expression.right == relation_id,
+        """
+        Query resource model by ID but also add the relationship as a query constrain.
+
+        :param relation_id: id of the related model
+        :param id: id of the model being required
+        :return: model with 'id' that has a related model with 'related_id'
+        """
+
+        # This checks if the relationship uses a secondary table. The existence of a relation between the models is
+        # constrained differently in either case.  If the relationship_property expression has a 'right' parameter, the
+        # relation uses no secondary table, and the model points directly to the related model with the id on 'right'.
+        if hasattr(self._relation_property.expression, 'right'):
+            return self._db_session.query(self._resource_model).filter(
+                self._resource_model.id == id,
+                self._relation_property.expression.right == relation_id,
+            ).one_or_none()
+        else:
+            return self._db_session.query(self._resource_model).filter(
+                self._resource_model.id == id,
+                self._relation_property.any(self._related_model.id == relation_id, id=id),
             ).one_or_none()
 
 
