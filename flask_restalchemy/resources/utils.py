@@ -80,8 +80,8 @@ def query_from_request(model, model_serializer, request, query=None):
     It also paginate the response if a 'page' value is present in the query parameters. A 'per_page'
     value in the query parameters defines the page length, default to 20 items.
 
-    Ordered search is available using 'order_by=<col_name>' providing the name of the model column to be the
-    ordination key. A 'desc' in the query parameters make the ordination in a descending order.
+    Ordered search is available using 'order_by=<col_name>'. The minus sign ("-<col_name>") could be
+    used to set descending order.
 
     :param class model:
         SQLAlchemy model class representing a database resource
@@ -95,8 +95,9 @@ def query_from_request(model, model_serializer, request, query=None):
     :param query:
         SQLAlchemy query instance
 
-    :rtype: list or dict (pagination)
-    :return: the serialized response with the list or the page of items
+    :rtype: list|dict
+    :return: the serialized response: "if 'page' is defined in the query params, a dict with page, per page, count and results is returned,
+    otherwise returns a list of serialized objects"
     """
     if not query:
         query = model.query
@@ -137,6 +138,6 @@ def query_from_request(model, model_serializer, request, query=None):
             'count': data.total,
             'results': [model_serializer.dump(item) for item in data.items]
         }
-
-    data = query.all()
-    return [model_serializer.dump(item) for item in data]
+    else:
+        data = query.all()
+        return [model_serializer.dump(item) for item in data]
