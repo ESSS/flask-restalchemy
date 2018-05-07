@@ -121,11 +121,14 @@ def query_from_request(model, model_serializer, request, query=None):
         limit = request.args['limit']
         query = query.limit(limit)
     if 'order_by' in request.args:
-        col = getattr(model,request.args['order_by'])
-        if 'desc' in request.args:
-            query = query.order_by(desc(col))
-        else:
-            query = query.order_by(col)
+        fields = request.args['order_by'].split(',')
+        for field in fields:
+            if field[0] == '-':
+                col = getattr(model, field[1:])
+                query = query.order_by(desc(col))
+            else:
+                col = getattr(model, field)
+                query = query.order_by(col)
     if 'page' in request.args:
         data = query.paginate()
         return {
