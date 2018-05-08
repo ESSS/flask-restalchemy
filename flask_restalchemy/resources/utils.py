@@ -67,7 +67,7 @@ def get_field_serializer_or_none(serializer, field_name):
     return field.serializer
 
 
-def query_from_request(model, model_serializer, request):
+def query_from_request(model, model_serializer, request, query=None):
     """
     Perform a filtered search in the database model table using query parameters in the http URL,
     disposed on the request args. The default logical operator is AND, but you can set the OR as
@@ -80,19 +80,27 @@ def query_from_request(model, model_serializer, request):
     It also paginate the response if a 'page' value is present in the query parameters. A 'per_page'
     value in the query parameters defines the page length, default to 20 items.
 
-    Ordered search is available using 'order_by=<col_name>' providing the name of the model column to be the
-    ordination key. A 'desc' in the query parameters make the ordination in a descending order.
+    Ordered search is available using 'order_by=<col_name>'. The minus sign ("-<col_name>") could be
+    used to set descending order.
 
     :param class model:
         SQLAlchemy model class representing a database resource
 
+    :param model_serializer:
+        instance of model serializer
+
     :param request:
         Flask http request data
 
-    :rtype: list
-    :return: the items for the current page
+    :param query:
+        SQLAlchemy query instance
+
+    :rtype: list|dict
+    :return: the serialized response: "if 'page' is defined in the query params, a dict with page, per page, count and results is returned,
+    otherwise returns a list of serialized objects"
     """
-    query = model.query
+    if not query:
+        query = model.query
 
     def build_filter_operator(column_name, request_filter, serializer):
         if column_name == '$or':
@@ -114,13 +122,22 @@ def query_from_request(model, model_serializer, request):
         limit = request.args['limit']
         query = query.limit(limit)
     if 'order_by' in request.args:
-        col = getattr(model,request.args['order_by'])
-        if 'desc' in request.args:
-            query = query.order_by(desc(col))
-        else:
-            query = query.order_by(col)
-    if 'page' not in request.args:
-        resources = query.all()
+        fields = request.args['order_by'].split(',')
+        for field in fields:
+            if field[0] == '-':
+                col = getattr(model, field[1:])
+                query = query.order_by(desc(col))
+            else:
+                col = getattr(model, field)
+                query = query.order_by(col)
+    if 'page' in request.args:
+        data = query.paginate()
+        return {
+            'page': data.page,
+            'per_page': data.per_page,
+            'count': data.total,
+            'results': [model_serializer.dump(item) for item in data.items]
+        }
     else:
-        resources = query.paginate()
-    return resources
+        data = query.all()
+        return [model_serializer.dump(item) for item in data]
