@@ -1,6 +1,7 @@
 from flask import request, json
 from flask_restful import Resource
 from flask_sqlalchemy import Pagination
+from sqlalchemy.orm import load_only
 
 from flask_restalchemy.serialization.modelserializer import ModelSerializer
 from .utils import query_from_request
@@ -103,7 +104,6 @@ class CollectionResource(BaseResource):
         data = query_from_request(self._resource_model, self._serializer, request)
         return data
 
-
     def post(self):
         saved = self._save_serialized(load_request_data())
         return saved, 201
@@ -133,7 +133,6 @@ class CollectionRelationResource(BaseResource):
         self._relation_property = relation_property
         self._related_model = relation_property.class_
 
-
     def get(self, relation_id):
         session = self._db_session()
         related_obj = session.query(self._related_model).get(relation_id)
@@ -143,7 +142,6 @@ class CollectionRelationResource(BaseResource):
         data = getattr(related_obj, self._relation_property.key)
         collection = [self._serializer.dump(item) for item in data]
         return collection
-
 
     def post(self, relation_id):
         session = self._db_session()
@@ -214,19 +212,17 @@ class ItemRelationResource(BaseResource):
         :return: model with 'id' that has a related model with 'related_id'
         """
 
-        # This checks if the relationship uses a secondary table. The existence of a relation between the models is
-        # constrained differently in either case.  If the relationship_property expression has a 'right' parameter, the
-        # relation uses no secondary table, and the model points directly to the related model with the id on 'right'.
-        if hasattr(self._relation_property.expression, 'right'):
-            return self._db_session.query(self._resource_model).filter(
-                self._resource_model.id == id,
-                self._relation_property.expression.right == relation_id,
+        # This checks if there is a parent with the related child on its relation property
+        related = self._db_session.query(self._related_model).options(load_only("id"))\
+            .filter(
+                self._related_model.id == relation_id,
+                self._relation_property.any(id=id)
             ).one_or_none()
-        else:
-            return self._db_session.query(self._resource_model).filter(
-                self._resource_model.id == id,
-                self._relation_property.any(self._related_model.id == relation_id, id=id),
-            ).one_or_none()
+
+        if related is None:
+            return None
+
+        return self._db_session.query(self._resource_model).get(id)
 
 
 class CollectionPropertyResource(CollectionRelationResource):
