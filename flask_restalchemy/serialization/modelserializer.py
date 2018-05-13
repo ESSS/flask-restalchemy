@@ -1,13 +1,16 @@
-from sqlalchemy import DateTime
 from sqlalchemy.orm.dynamic import AppenderMixin
 
-from flask_restalchemy.serialization.serializer import Serializer, DateTimeSerializer
+from flask_restalchemy.serialization.serializer import Serializer, DateTimeSerializer, is_datetime_field
 
 
 class ModelSerializer(Serializer):
     """
     Serializer for SQLAlchemy Declarative classes
     """
+
+    DEFAULT_SERIALIZERS = [
+        (is_datetime_field, DateTimeSerializer)
+    ]
 
     def __init__(self, declarative_class):
         """
@@ -28,8 +31,21 @@ class ModelSerializer(Serializer):
         for column in columns.keys():
             field = self._fields.setdefault(column, Field())
             # Set a serializer for fields that can not be serialized by default
-            if field.serializer is None and is_datetime_field(columns[column]):
-                field._serializer = DateTimeSerializer()
+            if field.serializer is None:
+                serializer = self._get_default_serializer(columns.get(column))
+                if serializer:
+                    field._serializer = serializer
+
+    def _get_default_serializer(self, column):
+        for check_type, serializer_class in self.DEFAULT_SERIALIZERS:
+            if check_type(column):
+                return serializer_class(column)
+
+    def before_post_commit(self, model, session):
+        pass
+
+    def after_post_commit(self, model, session):
+        pass
 
     def dump(self, model):
         serial = {}
@@ -196,16 +212,3 @@ def is_tomany_attribute(value):
     """
     return isinstance(value, (list, AppenderMixin))
 
-
-def is_datetime_field(col):
-    """
-    Check if a column is DateTime (or implements DateTime)
-
-    :param Column col: the column object to be checked
-
-    :rtype: bool
-    """
-    if hasattr(col.type, "impl"):
-        return type(col.type.impl) is DateTime
-    else:
-        return type(col.type) is DateTime

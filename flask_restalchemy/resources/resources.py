@@ -1,6 +1,7 @@
 from flask import request, json
 from flask_restful import Resource
 from flask_sqlalchemy import Pagination
+from sqlalchemy.orm import load_only
 
 from flask_restalchemy.serialization.modelserializer import ModelSerializer
 from .utils import query_from_request
@@ -35,11 +36,26 @@ class BaseResource(Resource):
         session.commit()
         return self._serializer.dump(model_obj).data
 
-    def _save_serialized(self, serialized_data, existing_model=None):
+    def _save_model(self, model_obj, method):
         session = self._session_getter()
-        model_obj = self._serializer.load(serialized_data, existing_model)
         session.add(model_obj)
+
+        # run pre commit hooks
+        if method == 'POST':
+            self._serializer.before_post_commit(model_obj, session)
+
         session.commit()
+
+        # run pos commit hooks
+        if method == 'POST':
+            self._serializer.after_post_commit(model_obj, session)
+
+    def _save_serialized(self, serialized_data, existing_model=None):
+        model_obj = self._serializer.load(serialized_data, existing_model)
+
+        method = 'PUT' if existing_model else 'POST'
+        self._save_model(model_obj, method)
+
         return self._serializer.dump(model_obj)
 
     @property
@@ -85,17 +101,8 @@ class CollectionResource(BaseResource):
     """
 
     def get(self):
-        data = query_from_request(self._resource_model, request)
-        if isinstance(data, Pagination):
-            return {
-                'page': data.page,
-                'per_page': data.per_page,
-                'count': data.total,
-                'results': [self._serializer.dump(item) for item in data.items]
-            }
-        else:
-            return [self._serializer.dump(item) for item in data]
-
+        data = query_from_request(self._resource_model, self._serializer, request)
+        return data
 
     def post(self):
         saved = self._save_serialized(load_request_data())
@@ -126,7 +133,6 @@ class CollectionRelationResource(BaseResource):
         self._relation_property = relation_property
         self._related_model = relation_property.class_
 
-
     def get(self, relation_id):
         session = self._db_session()
         related_obj = session.query(self._related_model).get(relation_id)
@@ -137,7 +143,6 @@ class CollectionRelationResource(BaseResource):
         collection = [self._serializer.dump(item) for item in data]
         return collection
 
-
     def post(self, relation_id):
         session = self._db_session()
         related_obj = session.query(self._related_model).get(relation_id)
@@ -146,8 +151,8 @@ class CollectionRelationResource(BaseResource):
         collection = getattr(related_obj, self._relation_property.key)
         new_obj = self._serializer.load(load_request_data())
         collection.append(new_obj)
-        session.add(new_obj)
-        session.commit()
+
+        self._save_model(new_obj, 'POST')
         return self._serializer.dump(new_obj), 201
 
 
@@ -199,11 +204,25 @@ class ItemRelationResource(BaseResource):
         return '', 204
 
     def _query_related_obj(self, relation_id, id):
-        # Query resource model by ID but also add the relationship as a query constrain.
-        return self._db_session.query(self._resource_model).filter(
-            self._resource_model.id == id,
-            self._relation_property.expression.right == relation_id,
+        """
+        Query resource model by ID but also add the relationship as a query constrain.
+
+        :param relation_id: id of the related model
+        :param id: id of the model being required
+        :return: model with 'id' that has a related model with 'related_id'
+        """
+
+        # This checks if there is a parent with the related child on its relation property
+        related = self._db_session.query(self._related_model).options(load_only("id"))\
+            .filter(
+                self._related_model.id == relation_id,
+                self._relation_property.any(id=id)
             ).one_or_none()
+
+        if related is None:
+            return None
+
+        return self._db_session.query(self._resource_model).get(id)
 
 
 class CollectionPropertyResource(CollectionRelationResource):

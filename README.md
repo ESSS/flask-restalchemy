@@ -1,6 +1,6 @@
 # Flask-RESTAlchemy #
 
-![travis-ci](https://api.travis-ci.org/ESSS/flask-rest-orm.svg?branch=master)
+![travis-ci](https://api.travis-ci.org/ESSS/flask-restalchemy.svg?branch=master)
 
 A Flask extension to build REST APIs. It dismiss the need of building *Schema* classes, 
 since usually all the information needed to serialize an SQLAlchemy instance is in the model
@@ -44,6 +44,9 @@ We are using [rever](https://github.com/regro/rever) to release new versions of 
 automatically create project tags on GitHub, build and upload the PyPI package and change the recipe
 on conda-forge. Just type:
 
+For each PR, you must update the CHANGELOG using the `news` folder. See [Changelog] section of
+Rever Developer's Guide on how to add a CHANGELOG entry.
+
 ```
 rever setup  # (first time only)
 
@@ -62,3 +65,5 @@ username = <username>
 [distutils]
 index-servers = pypi
 ```
+
+[Changelog]: https://regro.github.io/rever-docs/devguide.html#changelog

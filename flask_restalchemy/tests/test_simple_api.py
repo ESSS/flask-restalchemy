@@ -36,7 +36,7 @@ def test_get(client):
     serialized = resp.parsed_data
     assert serialized['firstname'] == expected_employee.firstname
     assert serialized['lastname'] == expected_employee.lastname
-    assert serialized['created_at'] == '2000-01-02T00:00:00Z'
+    assert serialized['created_at'] == '2000-01-02T00:00:00'
     assert 'password' not in serialized
     assert serialized['company_id'] == expected_employee.company_id
     assert serialized['company_name'] == Company.query.get(expected_employee.company_id).name
