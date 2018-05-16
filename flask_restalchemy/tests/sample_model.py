@@ -2,12 +2,14 @@ from datetime import datetime
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, select, Table
-from sqlalchemy.orm import relationship, column_property, object_session
+from sqlalchemy.orm import column_property, object_session
 
 from flask_restalchemy import ModelSerializer, NestedModelField, Field
 
 db = SQLAlchemy()
 Base = db.Model
+
+relationship = db.relationship
 
 
 class Company(Base):
