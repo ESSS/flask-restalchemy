@@ -173,16 +173,16 @@ def test_pagination(client):
     company_id = response.parsed_data['id']
 
     for i in range(20):
-        client.post(f'/company/{company_id}/employees', data={'firstname': 'Jimmy {}'.format(i)})
+        client.post('/company/{}/employees'.format(company_id), data={'firstname': 'Jimmy {}'.format(i)})
 
-    response = client.get(f"/company/{company_id}/employees?filter=" + '{"firstname": {"eq": "Jimmy 1"} }')
+    response = client.get('/company/{}/employees?filter={}'.format(company_id, json.dumps({"firstname": {"eq": "Jimmy 1"}})))
     assert response.status_code == 200
     dataList = response.parsed_data
     assert len(dataList) == 1
     assert 'firstname' in dataList[0]
     assert dataList[0]['firstname'] == 'Jimmy 1'
 
-    response = client.get(f'/company/{company_id}/employees?page=1&per_page=5')
+    response = client.get('/company/{}/employees?page=1&per_page=5'.format(company_id))
     assert response.status_code == 200
     dataList = response.parsed_data
     assert len(dataList.get('results')) == 5
