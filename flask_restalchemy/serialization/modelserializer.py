@@ -1,6 +1,7 @@
 from sqlalchemy.orm.dynamic import AppenderMixin
 
-from flask_restalchemy.serialization.serializer import Serializer, DateTimeSerializer, is_datetime_field
+from flask_restalchemy.serialization.serializer import Serializer, DateTimeSerializer, is_datetime_field, is_enum_field, \
+    EnumSerializer
 
 
 class ModelSerializer(Serializer):
@@ -9,7 +10,8 @@ class ModelSerializer(Serializer):
     """
 
     DEFAULT_SERIALIZERS = [
-        (is_datetime_field, DateTimeSerializer)
+        (is_datetime_field, DateTimeSerializer),
+        (is_enum_field, EnumSerializer)
     ]
 
     def __init__(self, declarative_class):
