@@ -17,32 +17,42 @@ v0.9.2
 
 * Now the auto generated end point name of a relationship uses the relationship name instead of the related model name
 
+**Fixed:**
 
-
-
-v0.9.1
-====================
-
+* Fix changelog auto generation
 
 
 v0.9.0
 ====================
 
+**Added:**
+
+* Add pagination and filter support for relationships
+* Add documentation with sphinx
+
+**Changed:**
 
 
 v0.8.5
 ====================
 
+**Changed:**
 
+* Change the way relation is checked on query related object
 
 v0.8.3
 ====================
 
+**Changed:**
 
+* Make `query_from_request` reusable
 
 v0.8.2
 ====================
 
+**Added:**
+
+* Enable deletion of an item from a relation that uses secondary table
 
 
 v0.8.1
