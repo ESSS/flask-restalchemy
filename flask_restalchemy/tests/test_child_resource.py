@@ -33,7 +33,7 @@ def sample_api(flask_app):
     return api
 
 def test_get_collection(client):
-    resp = client.get('/company/3/employee')
+    resp = client.get('/company/3/employees')
     assert resp.status_code == 200
     assert len(resp.parsed_data) == 2
     sarah = resp.parsed_data[0]
@@ -44,25 +44,25 @@ def test_get_collection(client):
     assert jim['lastname'] == 'Raynor'
 
 def test_post(client):
-    resp = client.post('/company/3/employee', data={'id': 7, 'firstname': 'Tychus', 'lastname': 'Findlay'})
+    resp = client.post('/company/3/employees', data={'id': 7, 'firstname': 'Tychus', 'lastname': 'Findlay'})
     assert resp.status_code == 201
     thychus = Employee.query.get(7)
     assert thychus.company_name == 'Terrans'
 
 def test_get(client):
-    resp = client.get('/company/3/employee/9')
+    resp = client.get('/company/3/employees/9')
     assert resp.status_code == 200
     obtained = resp.parsed_data
     assert obtained['firstname'] == 'Jim'
     assert obtained['lastname'] == 'Raynor'
     assert obtained['company_name'] == 'Terrans'
     # Query a valid resource ID, but with a wrong related ID
-    resp = client.get('/company/4/employee/9')
+    resp = client.get('/company/4/employees/9')
     assert resp.status_code == 404
 
 def test_put(client):
     new_name = 'Jimmy'
-    resp = client.put('/company/3/employee/9', data={'firstname': new_name})
+    resp = client.put('/company/3/employees/9', data={'firstname': new_name})
     assert resp.status_code == 200
     jim = Employee.query.get(9)
     assert jim.firstname == new_name
@@ -71,7 +71,7 @@ def test_delete(client):
     jim = Employee.query.get(9)
     assert jim is not None
 
-    resp = client.delete('/company/3/employee/9')
+    resp = client.delete('/company/3/employees/9')
     assert resp.status_code == 204
 
 
@@ -85,13 +85,13 @@ def test_delete_on_relation_with_secondary(client):
     assert jim is not None
     assert dep not in sarah.departments
 
-    resp = client.get('/employee/3/department')
+    resp = client.get('/employee/3/departments')
     assert resp.status_code == 200
 
-    resp = client.delete('/employee/3/department/' + str(dep.id))
+    resp = client.delete('/employee/3/departments/' + str(dep.id))
     assert resp.status_code == 404
 
-    resp = client.delete('/employee/9/department/'+str(dep.id))
+    resp = client.delete('/employee/9/departments/'+str(dep.id))
     assert resp.status_code == 204
 
 

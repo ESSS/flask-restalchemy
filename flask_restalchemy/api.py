@@ -120,7 +120,7 @@ class Api(object):
         if url_rule:
             assert '<relation_id>' in url_rule
         else:
-            url_rule = '/{}/<relation_id>/{}'.format(related_collection_name, model_collection_name)
+            url_rule = '/{}/<relation_id>/{}'.format(related_collection_name, relation_property.key)
 
         if not request_decorators:
             request_decorators = []
