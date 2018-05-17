@@ -9,7 +9,7 @@ install_requires=[
 
 setup(
     name='flask-restalchemy',
-    version='0.9.1',
+    version='version',
     packages=find_packages(exclude=['*.tests']),
     url='https://github.com/ESSS/flask-restalchemy',
     license='MIT',
