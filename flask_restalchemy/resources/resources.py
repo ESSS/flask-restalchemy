@@ -160,6 +160,7 @@ class CollectionRelationResource(BaseResource):
             return NOT_FOUND_ERROR, 404
         collection = getattr(related_obj, self._relation_property.key)
         new_obj = self._serializer.load(load_request_data())
+        session.add(new_obj)
         collection.append(new_obj)
 
         self._save_model(new_obj, 'POST')
