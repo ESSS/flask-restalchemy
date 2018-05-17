@@ -1,7 +1,9 @@
 from flask import request, json
 from flask_restful import Resource
 from flask_sqlalchemy import Pagination
+from py._log import warning
 from sqlalchemy.orm import load_only
+from sqlalchemy.orm.collections import InstrumentedList
 
 from flask_restalchemy.serialization.modelserializer import ModelSerializer
 from .utils import query_from_request
@@ -135,12 +137,20 @@ class CollectionRelationResource(BaseResource):
 
     def get(self, relation_id):
         session = self._db_session()
-        related_obj = session.query(self._related_model).get(relation_id)
+
+        # using options(load_only('id')) avoid unintended subquerying, as all we want is check if the element exists
+        related_obj = session.query(self._related_model).options(load_only("id")).get(relation_id)
         if related_obj is None:
             return NOT_FOUND_ERROR, 404
+
         # TODO: Is there a more efficient way than using getattr?
-        data = getattr(related_obj, self._relation_property.key)
-        collection = [self._serializer.dump(item) for item in data]
+        relation_list_or_query = getattr(related_obj, self._relation_property.key)
+        if isinstance(relation_list_or_query, InstrumentedList) or not hasattr(relation_list_or_query, 'paginate'):
+            warning.warn('Warnning: relationship does not support pagination nor filter. Use flask-sqlalchemy '
+                         'relationship with lazy="dynamic".')
+            collection = [self._serializer.dump(item) for item in relation_list_or_query]
+        else:
+            collection = query_from_request(self._resource_model, self._serializer, request, query=relation_list_or_query)
         return collection
 
     def post(self, relation_id):

@@ -12,6 +12,7 @@ def sample_api(flask_app):
     api = Api(flask_app)
     api.add_model(Company)
     api.add_model(Employee, serializer_class=EmployeeSerializer)
+    api.add_relation(Company.employees, serializer_class=EmployeeSerializer)
     return api
 
 @pytest.fixture(autouse=True)
@@ -164,3 +165,24 @@ def test_pagination(client):
     response = client.get('/company?page=5&per_page=5')
     dataList = response.parsed_data
     assert len(dataList.get('results')) == 1
+
+
+def test_pagination(client):
+    response = client.post('/company', data={'name': 'Terrans 1'})
+    assert response.status_code == 201
+    company_id = response.parsed_data['id']
+
+    for i in range(20):
+        client.post('/company/{}/employees'.format(company_id), data={'firstname': 'Jimmy {}'.format(i)})
+
+    response = client.get('/company/{}/employees?filter={}'.format(company_id, json.dumps({"firstname": {"eq": "Jimmy 1"}})))
+    assert response.status_code == 200
+    dataList = response.parsed_data
+    assert len(dataList) == 1
+    assert 'firstname' in dataList[0]
+    assert dataList[0]['firstname'] == 'Jimmy 1'
+
+    response = client.get('/company/{}/employees?page=1&per_page=5'.format(company_id))
+    assert response.status_code == 200
+    dataList = response.parsed_data
+    assert len(dataList.get('results')) == 5
