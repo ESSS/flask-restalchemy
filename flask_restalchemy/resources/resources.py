@@ -1,7 +1,7 @@
+import warnings
+
 from flask import request, json
 from flask_restful import Resource
-from flask_sqlalchemy import Pagination
-from py._log import warning
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm.collections import InstrumentedList
 
@@ -146,7 +146,7 @@ class CollectionRelationResource(BaseResource):
         # TODO: Is there a more efficient way than using getattr?
         relation_list_or_query = getattr(related_obj, self._relation_property.key)
         if isinstance(relation_list_or_query, InstrumentedList) or not hasattr(relation_list_or_query, 'paginate'):
-            warning.warn('Warnning: relationship does not support pagination nor filter. Use flask-sqlalchemy '
+            warnings.warn('Warnning: relationship does not support pagination nor filter. Use flask-sqlalchemy '
                          'relationship with lazy="dynamic".')
             collection = [self._serializer.dump(item) for item in relation_list_or_query]
         else:
@@ -160,6 +160,7 @@ class CollectionRelationResource(BaseResource):
             return NOT_FOUND_ERROR, 404
         collection = getattr(related_obj, self._relation_property.key)
         new_obj = self._serializer.load(load_request_data())
+        session.add(new_obj)
         collection.append(new_obj)
 
         self._save_model(new_obj, 'POST')
