@@ -43,6 +43,12 @@ class ModelSerializer(Serializer):
             if check_type(column):
                 return serializer_class(column)
 
+    def before_put_commit(self, model, session):
+        pass
+
+    def after_put_commit(self, model, session):
+        pass
+
     def before_post_commit(self, model, session):
         pass
 

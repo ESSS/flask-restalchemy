@@ -45,12 +45,16 @@ class BaseResource(Resource):
         # run pre commit hooks
         if method == 'POST':
             self._serializer.before_post_commit(model_obj, session)
+        elif method == 'PUT':
+            self._serializer.before_put_commit(model_obj, session)
 
         session.commit()
 
-        # run pos commit hooks
+        # run post commit hooks
         if method == 'POST':
             self._serializer.after_post_commit(model_obj, session)
+        elif method == 'PUT':
+            self._serializer.after_put_commit(model_obj, session)
 
     def _save_serialized(self, serialized_data, existing_model=None):
         model_obj = self._serializer.load(serialized_data, existing_model)
