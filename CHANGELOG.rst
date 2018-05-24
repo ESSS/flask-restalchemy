@@ -4,6 +4,18 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.10.0
+====================
+
+**Added:**
+
+None
+
+* add pre/post commit hooks to put
+
+
+
+
 v0.9.2
 ====================
 
