@@ -118,9 +118,6 @@ def query_from_request(model, model_serializer, request, query=None):
         filters = json.loads(request.args['filter'])
         for attr, value in filters.items():
             query = query.filter(build_filter_operator(attr, value, model_serializer))
-    if 'limit' in request.args:
-        limit = request.args['limit']
-        query = query.limit(limit)
     if 'order_by' in request.args:
         fields = request.args['order_by'].split(',')
         for field in fields:
@@ -130,6 +127,10 @@ def query_from_request(model, model_serializer, request, query=None):
             else:
                 col = getattr(model, field)
                 query = query.order_by(col)
+    # limit and pagination have to be done after order_by
+    if 'limit' in request.args:
+        limit = request.args['limit']
+        query = query.limit(limit)
     if 'page' in request.args:
         data = query.paginate()
         return {

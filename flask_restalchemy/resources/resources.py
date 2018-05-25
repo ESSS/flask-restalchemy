@@ -248,8 +248,14 @@ class CollectionPropertyResource(CollectionRelationResource):
         related_obj = session.query(self._related_model).get(relation_id)
         if related_obj is None:
             return NOT_FOUND_ERROR, 404
-        data = getattr(related_obj, self._property_name)
-        collection = [self._serializer.dump(item) for item in data]
+        relation_list_or_query = getattr(related_obj, self._property_name)
+        if isinstance(relation_list_or_query, InstrumentedList) or not hasattr(relation_list_or_query, 'paginate'):
+            warnings.warn('Warnning: property ' + self._property_name + ' does not support pagination nor filter.'
+                          ' Use flask-sqlalchemy and make your property return a query object')
+            collection = [self._serializer.dump(item) for item in relation_list_or_query]
+        else:
+            collection = query_from_request(self._resource_model, self._serializer, request,
+                                            query=relation_list_or_query)
         return collection
 
     def post(self, relation_id):

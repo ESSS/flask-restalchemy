@@ -65,9 +65,7 @@ class Employee(Base):
 
     @property
     def colleagues(self):
-        return object_session(self).execute(
-            select([Employee]).where(Employee.company_id == self.company_id)
-        ).fetchall()
+        return object_session(self).query(Employee).filter(Employee.company_id == self.company_id)
 
 
 employee_department = Table('employee_department', Base.metadata,
