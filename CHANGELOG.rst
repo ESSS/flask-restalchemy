@@ -4,6 +4,18 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.10.1
+====================
+
+**Added:**
+
+None
+
+* Support for pagination and query on property end points
+
+
+
+
 v0.10.0
 ====================
 
