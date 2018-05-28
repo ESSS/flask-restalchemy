@@ -1,4 +1,5 @@
 import pytest
+from flask import json
 
 from flask_restalchemy import Api
 from flask_restalchemy.tests.sample_model import Employee, Company, EmployeeSerializer, Department
@@ -104,3 +105,27 @@ def test_property(client):
 
     resp = client.post('/employee/9/colleagues')
     assert resp.status_code == 405
+
+
+def test_property_pagination(client):
+
+    for i in range(20):
+        client.post('/company/3/employees', data={'firstname': 'Jimmy {}'.format(i)})
+
+    response = client.get('/employee/9/colleagues?order_by=id&limit=5')
+    assert response.status_code == 200
+    assert len(response.parsed_data) == 5
+    assert response.parsed_data[0]['firstname'] == 'Sarah'
+
+    response = client.get(
+        '/employee/9/colleagues?filter={}'.format(json.dumps({"firstname": {"eq": "Sarah"}})))
+    assert response.status_code == 200
+    dataList = response.parsed_data
+    assert len(dataList) == 1
+    assert 'firstname' in dataList[0]
+    assert dataList[0]['firstname'] == 'Sarah'
+
+    response = client.get('/employee/9/colleagues?page=1&per_page=10')
+    assert response.status_code == 200
+    dataList = response.parsed_data
+    assert len(dataList.get('results')) == 10

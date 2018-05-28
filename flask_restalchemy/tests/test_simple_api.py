@@ -167,7 +167,7 @@ def test_pagination(client):
     assert len(dataList.get('results')) == 1
 
 
-def test_pagination(client):
+def test_relations_pagination(client):
     response = client.post('/company', data={'name': 'Terrans 1'})
     assert response.status_code == 201
     company_id = response.parsed_data['id']
