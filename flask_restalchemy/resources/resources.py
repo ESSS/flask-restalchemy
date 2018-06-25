@@ -87,8 +87,7 @@ class ItemResource(BaseResource):
             return NOT_FOUND_ERROR, 404
         serialized = self._serializer.dump(data)
         serialized.update(load_request_data())
-        self._save_serialized(serialized, data)
-        return serialized
+        return self._save_serialized(serialized, data)
 
     def delete(self, id):
         data = self._resource_model.query.get(id)
