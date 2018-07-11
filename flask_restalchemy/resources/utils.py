@@ -25,6 +25,7 @@ SQLA_OPERATORS = {
     'le': '__le__',
 }
 
+
 def parse_value(value, serializer):
     if not serializer:
         return value
@@ -67,6 +68,67 @@ def get_field_serializer_or_none(serializer, field_name):
     return field.serializer
 
 
+def apply_request_args_to_query(model, model_serializer, request, query):
+    """
+        Build a query using query parameters in the http URL, disposed on the request args.
+        The default logical operator is AND, but you can set the OR as in the following examples:
+
+            a) OR -> ?filter={"$or":{"name": {"startswith": "Terrans 1"},"location": "Location 1"}}
+            b) AND -> ?filter={"$and":{"name": {"ilike": "%Terrans 1%"},"location": "Location 1"}}
+                or ?filter={"name": {"ilike": "%Terrans 1%"},"location": {"eq": "Location 1"}}
+
+        Ordered search is available using 'order_by=<col_name>'. The minus sign ("-<col_name>") could be
+        used to set descending order.
+
+        :param class model:
+            SQLAlchemy model class representing a database resource
+
+        :param model_serializer:
+            instance of model serializer
+
+        :param request:
+            Flask http request data
+
+        :param query:
+            SQLAlchemy query instance
+
+        :rtype: query
+        :return: SQLAlchemy query instance
+        """
+
+    def build_filter_operator(column_name, request_filter, serializer):
+        if column_name == '$or':
+            return or_(build_filter_operator(attr, value, serializer) for attr, value in request_filter.items())
+        elif column_name == '$and':
+            return and_(build_filter_operator(attr, value, serializer) for attr, value in request_filter.items())
+        if isinstance(request_filter, dict):
+            op_name = next(iter(request_filter))
+            return get_operator(getattr(model, column_name), op_name, request_filter.get(op_name),
+                                get_field_serializer_or_none(serializer, column_name))
+        return get_operator(getattr(model, column_name), None, request_filter,
+                            get_field_serializer_or_none(serializer, column_name))
+
+    if 'filter' in request.args:
+        filters = json.loads(request.args['filter'])
+        for attr, value in filters.items():
+            query = query.filter(build_filter_operator(attr, value, model_serializer))
+    if 'order_by' in request.args:
+        fields = request.args['order_by'].split(',')
+        for field in fields:
+            if field[0] == '-':
+                col = getattr(model, field[1:])
+                query = query.order_by(desc(col))
+            else:
+                col = getattr(model, field)
+                query = query.order_by(col)
+    # limit and pagination have to be done after order_by
+    if 'limit' in request.args:
+        limit = request.args['limit']
+        query = query.limit(limit)
+
+    return query
+
+
 def query_from_request(model, model_serializer, request, query=None):
     """
     Perform a filtered search in the database model table using query parameters in the http URL,
@@ -102,35 +164,8 @@ def query_from_request(model, model_serializer, request, query=None):
     if not query:
         query = model.query
 
-    def build_filter_operator(column_name, request_filter, serializer):
-        if column_name == '$or':
-            return or_(build_filter_operator(attr, value, serializer) for attr, value in request_filter.items())
-        elif column_name == '$and':
-            return and_(build_filter_operator(attr, value, serializer) for attr, value in request_filter.items())
-        if isinstance(request_filter, dict):
-            op_name = next(iter(request_filter))
-            return get_operator(getattr(model, column_name), op_name, request_filter.get(op_name),
-                                get_field_serializer_or_none(serializer, column_name))
-        return get_operator(getattr(model, column_name), None, request_filter,
-                            get_field_serializer_or_none(serializer, column_name))
+    query = apply_request_args_to_query(model, model_serializer, request, query)
 
-    if 'filter' in request.args:
-        filters = json.loads(request.args['filter'])
-        for attr, value in filters.items():
-            query = query.filter(build_filter_operator(attr, value, model_serializer))
-    if 'order_by' in request.args:
-        fields = request.args['order_by'].split(',')
-        for field in fields:
-            if field[0] == '-':
-                col = getattr(model, field[1:])
-                query = query.order_by(desc(col))
-            else:
-                col = getattr(model, field)
-                query = query.order_by(col)
-    # limit and pagination have to be done after order_by
-    if 'limit' in request.args:
-        limit = request.args['limit']
-        query = query.limit(limit)
     if 'page' in request.args:
         data = query.paginate()
         return {
