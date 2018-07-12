@@ -102,7 +102,7 @@ class ModelSerializer(Serializer):
                     if existing_model:
                         existing_nested = getattr(existing_model, field_name)
                     else:
-                        existing_nested = self._get_existing_model_or_none(field, value)
+                        existing_nested = self._find_existing_model(field, value)
                     deserial_value = field.serializer.load(value, existing_nested)
                 else:
                     deserial_value = field.serializer.load(value)
@@ -111,7 +111,7 @@ class ModelSerializer(Serializer):
             setattr(model, field_name, deserial_value)
         return model
 
-    def _get_existing_model_or_none(self, field, value):
+    def _find_existing_model(self, field, value):
         class_mapper = field.serializer._mapper_class
         pk_name = self._get_pk_name(class_mapper)
         pk = value.get(pk_name)
