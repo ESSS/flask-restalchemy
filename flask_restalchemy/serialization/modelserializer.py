@@ -86,9 +86,7 @@ class ModelSerializer(Serializer):
         if existing_model:
             model = existing_model
             # If deserialization must update an existing model, check if primary key is the same
-            primary_keys = existing_model.__mapper__.primary_key
-            assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
-            pk_name = primary_keys[0].key
+            pk_name = self._get_pk_name(existing_model)
             assert getattr(existing_model, pk_name) == serialized[pk_name], \
                 "Primary key value of serialized nested object is inconsistent"
         else:
@@ -100,8 +98,11 @@ class ModelSerializer(Serializer):
             if value is None:
                 deserial_value = value
             elif field.serializer:
-                if isinstance(field.serializer, ModelSerializer) and existing_model:
-                    existing_nested = getattr(existing_model, field_name)
+                if isinstance(field.serializer, ModelSerializer):
+                    if existing_model:
+                        existing_nested = getattr(existing_model, field_name)
+                    else:
+                        existing_nested = self._find_existing_model(field, value)
                     deserial_value = field.serializer.load(value, existing_nested)
                 else:
                     deserial_value = field.serializer.load(value)
@@ -109,6 +110,21 @@ class ModelSerializer(Serializer):
                 deserial_value = value
             setattr(model, field_name, deserial_value)
         return model
+
+    def _find_existing_model(self, field, value):
+        class_mapper = field.serializer._mapper_class
+        pk_name = self._get_pk_name(class_mapper)
+        pk = value.get(pk_name)
+        if pk:
+            return class_mapper.query.get(pk)
+        else:
+            return None
+
+    def _get_pk_name(self, existing_model):
+        primary_keys = existing_model.__mapper__.primary_key
+        assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
+        pk_name = primary_keys[0].key
+        return pk_name
 
 
 class Field(object):

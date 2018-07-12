@@ -25,6 +25,7 @@ SQLA_OPERATORS = {
     'le': '__le__',
 }
 
+
 def parse_value(value, serializer):
     if not serializer:
         return value
@@ -67,40 +68,33 @@ def get_field_serializer_or_none(serializer, field_name):
     return field.serializer
 
 
-def query_from_request(model, model_serializer, request, query=None):
+def apply_request_args_to_query(query, model, model_serializer, request):
     """
-    Perform a filtered search in the database model table using query parameters in the http URL,
-    disposed on the request args. The default logical operator is AND, but you can set the OR as
-    in the following examples:
+        Build a query using query parameters in the http URL, disposed on the request args.
+        The default logical operator is AND, but you can set the OR as in the following examples:
 
-        a) OR -> ?filter={"$or":{"name": {"startswith": "Terrans 1"},"location": "Location 1"}}
-        b) AND -> ?filter={"$and":{"name": {"ilike": "%Terrans 1%"},"location": "Location 1"}}
-            or ?filter={"name": {"ilike": "%Terrans 1%"},"location": {"eq": "Location 1"}}
+            a) OR -> ?filter={"$or":{"name": {"startswith": "Terrans 1"},"location": "Location 1"}}
+            b) AND -> ?filter={"$and":{"name": {"ilike": "%Terrans 1%"},"location": "Location 1"}}
+                or ?filter={"name": {"ilike": "%Terrans 1%"},"location": {"eq": "Location 1"}}
 
-    It also paginate the response if a 'page' value is present in the query parameters. A 'per_page'
-    value in the query parameters defines the page length, default to 20 items.
+        Ordered search is available using 'order_by=<col_name>'. The minus sign ("-<col_name>") could be
+        used to set descending order.
 
-    Ordered search is available using 'order_by=<col_name>'. The minus sign ("-<col_name>") could be
-    used to set descending order.
+        :param query:
+            SQLAlchemy query instance
 
-    :param class model:
-        SQLAlchemy model class representing a database resource
+        :param class model:
+            SQLAlchemy model class representing a database resource
 
-    :param model_serializer:
-        instance of model serializer
+        :param model_serializer:
+            instance of model serializer
 
-    :param request:
-        Flask http request data
+        :param request:
+            Flask http request data
 
-    :param query:
-        SQLAlchemy query instance
-
-    :rtype: list|dict
-    :return: the serialized response: "if 'page' is defined in the query params, a dict with page, per page, count and results is returned,
-    otherwise returns a list of serialized objects"
-    """
-    if not query:
-        query = model.query
+        :rtype: query
+        :return: SQLAlchemy query instance
+        """
 
     def build_filter_operator(column_name, request_filter, serializer):
         if column_name == '$or':
@@ -131,6 +125,42 @@ def query_from_request(model, model_serializer, request, query=None):
     if 'limit' in request.args:
         limit = request.args['limit']
         query = query.limit(limit)
+
+    return query
+
+
+def query_from_request(model, model_serializer, request, query=None):
+    """
+    Perform a filtered search in the database model table using query parameters in the http URL,
+    disposed on the request args.
+
+    See function apply_request_args_to_query on how to use filters
+    py:function:: apply_request_args_to_query(query, model, model_serializer, request)
+
+    It also paginate the response if a 'page' value is present in the query parameters. A 'per_page'
+    value in the query parameters defines the page length, default to 20 items.
+
+    :param class model:
+        SQLAlchemy model class representing a database resource
+
+    :param model_serializer:
+        instance of model serializer
+
+    :param request:
+        Flask http request data
+
+    :param query:
+        SQLAlchemy query instance
+
+    :rtype: list|dict
+    :return: the serialized response: "if 'page' is defined in the query params, a dict with page, per page, count and results is returned,
+    otherwise returns a list of serialized objects"
+    """
+    if not query:
+        query = model.query
+
+    query = apply_request_args_to_query(query, model, model_serializer, request)
+
     if 'page' in request.args:
         data = query.paginate()
         return {
