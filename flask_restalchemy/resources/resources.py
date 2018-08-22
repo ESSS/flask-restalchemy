@@ -166,17 +166,22 @@ class CollectionRelationResource(BaseResource):
         resource_id = data_dict.get('id', None)
 
         if resource_id:
-            resource_obj = session.query(self._resource_model).get(resource_id)
-            collection.append(resource_obj)
-            session.commit()
-            return self._serializer.dump(resource_obj), 200
-        else:
-            new_obj = self._serializer.load(data_dict)
-            session.add(new_obj)
-            collection.append(new_obj)
+            return self.append_existent(collection, resource_id, session)
 
-            self._save_model(new_obj, 'POST')
-            return self._serializer.dump(new_obj), 201
+        new_obj = self._serializer.load(data_dict)
+        session.add(new_obj)
+        collection.append(new_obj)
+
+        self._save_model(new_obj, 'POST')
+        return self._serializer.dump(new_obj), 201
+
+    def append_existent(self, collection, resource_id, session):
+        resource_obj = session.query(self._resource_model).get(resource_id)
+        if resource_obj is None:
+            return NOT_FOUND_ERROR, 404
+        collection.append(resource_obj)
+        session.commit()
+        return self._serializer.dump(resource_obj), 200
 
 
 class ItemRelationResource(BaseResource):

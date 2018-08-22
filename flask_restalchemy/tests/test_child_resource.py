@@ -28,6 +28,7 @@ def create_test_sample(db_session):
 def sample_api(flask_app):
     api = Api(flask_app)
     api.add_model(Company)
+    api.add_model(Employee)
     api.add_relation(Company.employees, serializer_class=EmployeeSerializer)
     api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer)
     api.add_relation(Employee.departments)
@@ -45,10 +46,27 @@ def test_get_collection(client):
     assert jim['lastname'] == 'Raynor'
 
 def test_post(client):
-    resp = client.post('/company/3/employees', data={'id': 7, 'firstname': 'Tychus', 'lastname': 'Findlay'})
+    resp = client.post('/company/3/employees', data={'firstname': 'Tychus', 'lastname': 'Findlay'})
     assert resp.status_code == 201
-    thychus = Employee.query.get(7)
+    empl_id = resp.parsed_data['id']
+    thychus = Employee.query.get(empl_id)
     assert thychus.company_name == 'Terrans'
+
+def test_post_append_existent(client):
+    resp = client.post('/employee', data={'firstname': 'Tychus', 'lastname': 'Findlay'})
+    assert resp.status_code == 201
+    empl_id = resp.parsed_data['id']
+    thychus = Employee.query.get(empl_id)
+    assert thychus.company_name is None
+
+    resp = client.post('/company/3/employees', data={'id': empl_id})
+    assert resp.status_code == 200
+
+    thychus = Employee.query.get(empl_id)
+    assert thychus.company_name == 'Terrans'
+
+    resp = client.post('/company/3/employees', data={'id': 1000})
+    assert resp.status_code == 404
 
 def test_get(client):
     resp = client.get('/company/3/employees/9')
