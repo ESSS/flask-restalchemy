@@ -4,6 +4,16 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.10.4
+====================
+
+**Added:**
+
+* Support for append an existent item to a relation end point
+
+
+
+
 v0.10.3
 ====================
 
