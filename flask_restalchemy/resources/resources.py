@@ -165,7 +165,7 @@ class CollectionRelationResource(BaseResource):
         data_dict = load_request_data()
         resource_id = data_dict.get('id', None)
 
-        if resource_id:
+        if resource_id is not None:
             return self.append_existent(collection, resource_id, session)
 
         new_obj = self._serializer.load(data_dict)
