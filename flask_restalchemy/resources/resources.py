@@ -279,13 +279,12 @@ class CollectionPropertyResource(CollectionRelationResource):
         return 'POST not allowed for property resources', 405
 
 
-class RequestException(Exception):
-    def __init__(self, msg, error_code):
-        self.msg = msg
-        self.error_code = error_code
-
-
 def load_request_data():
+    """
+    Returns request data as dict.
+
+    :rtype: dict
+    """
     if request.data:
         return json.loads(request.data.decode('utf-8'))
     else:

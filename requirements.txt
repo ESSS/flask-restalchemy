@@ -1,5 +1,7 @@
 flask
 sqlalchemy>=1.1
+sqlalchemy_utils>=0.30
 flask-restful>=0.3.0
 flask-sqlalchemy>=2.3.0
 pytest
+pytest-datadir
