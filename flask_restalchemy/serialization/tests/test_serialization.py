@@ -3,6 +3,7 @@ import datetime
 import pytest
 
 from flask_restalchemy import PrimaryKeyField
+from flask_restalchemy.serialization.swagger_spec import gen_spec
 from flask_restalchemy.serialization.modelserializer import ModelSerializer, Field, NestedModelField, NestedAttributesField
 from flask_restalchemy.tests.sample_model import Employee, Company, Address, Department
 
@@ -30,6 +31,15 @@ class EmployeeSerializerPrimaryKeyFields(ModelSerializer):
     created_at = Field(dump_only=True)
     address = PrimaryKeyField(Address)
     company = PrimaryKeyField(Company)
+    department = PrimaryKeyField(Department)
+
+
+class EmployeeSerializerMixedFields(ModelSerializer):
+
+    password = Field(load_only=True)
+    created_at = Field(dump_only=True)
+    address = NestedAttributesField({'id': int, 'street': str, 'number': str, 'city': str})
+    company = NestedModelField(Company)
     department = PrimaryKeyField(Department)
 
 
@@ -142,3 +152,17 @@ def test_empty_nested():
     assert serialized['company'] is None
     model = serializer.load(serialized)
     assert model.company is None
+
+def test_gen_spec(datadir):
+    serializer = EmployeeSerializerMixedFields(Employee)
+    spec = gen_spec(serializer, 'GET')
+    expected_file = datadir/'expected_spec.yml'
+    obtained_file = datadir/'obtained_spec.yml'
+
+    import json
+    expected_spec = json.loads(expected_file.read_text())
+    definitions = spec['definitions']
+    expected_definitions = expected_spec['definitions']
+    obtained_file.write_text(json.dumps(spec, indent=4))
+    assert definitions['Company'] == expected_definitions['Company']
+    assert definitions['Employee'] == expected_definitions['Employee']

@@ -162,12 +162,26 @@ class CollectionRelationResource(BaseResource):
         if not related_obj:
             return NOT_FOUND_ERROR, 404
         collection = getattr(related_obj, self._relation_property.key)
-        new_obj = self._serializer.load(load_request_data())
+        data_dict = load_request_data()
+        resource_id = data_dict.get('id', None)
+
+        if resource_id is not None:
+            return self.append_existent(collection, resource_id, session)
+
+        new_obj = self._serializer.load(data_dict)
         session.add(new_obj)
         collection.append(new_obj)
 
         self._save_model(new_obj, 'POST')
         return self._serializer.dump(new_obj), 201
+
+    def append_existent(self, collection, resource_id, session):
+        resource_obj = session.query(self._resource_model).get(resource_id)
+        if resource_obj is None:
+            return NOT_FOUND_ERROR, 404
+        collection.append(resource_obj)
+        session.commit()
+        return self._serializer.dump(resource_obj), 200
 
 
 class ItemRelationResource(BaseResource):
@@ -265,13 +279,12 @@ class CollectionPropertyResource(CollectionRelationResource):
         return 'POST not allowed for property resources', 405
 
 
-class RequestException(Exception):
-    def __init__(self, msg, error_code):
-        self.msg = msg
-        self.error_code = error_code
-
-
 def load_request_data():
+    """
+    Returns request data as dict.
+
+    :rtype: dict
+    """
     if request.data:
         return json.loads(request.data.decode('utf-8'))
     else:

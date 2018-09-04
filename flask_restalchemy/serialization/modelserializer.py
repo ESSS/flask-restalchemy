@@ -1,4 +1,7 @@
+from typing import Union
+
 from sqlalchemy.orm.dynamic import AppenderMixin
+from sqlalchemy.sql import sqltypes
 
 from flask_restalchemy.serialization.serializer import Serializer, DateTimeSerializer, is_datetime_field, is_enum_field, \
     EnumSerializer
@@ -14,46 +17,27 @@ class ModelSerializer(Serializer):
         (is_enum_field, EnumSerializer)
     ]
 
-    def __init__(self, declarative_class):
+    def __init__(self, model_class):
         """
-        :param Type[DeclarativeMeta] declarative_class: the declarative class to be serialized
+        :param Type[DeclarativeMeta] model_class: the SQLAlchemy mapping class to be serialized
         """
-        self._mapper_class = declarative_class
-        self._fields = {}
-        columns = declarative_class.__mapper__.c
-        if self.__class__ is not ModelSerializer:
-            # Collect Fields defined in subclasses
-            for attr_name in dir(self.__class__):
-                if attr_name.startswith('_'):
-                    continue
-                value = getattr(self, attr_name)
-                if isinstance(value, Field):
-                    self._fields[attr_name] = value
+        self._mapper_class = model_class
+        self._fields = self._get_declared_fields()
         # Collect columns not declared in the serializer
-        for column in columns.keys():
+        for column in self.model_columns.keys():
             field = self._fields.setdefault(column, Field())
             # Set a serializer for fields that can not be serialized by default
             if field.serializer is None:
-                serializer = self._get_default_serializer(columns.get(column))
+                serializer = self._get_default_serializer(self.model_columns.get(column))
                 if serializer:
                     field._serializer = serializer
 
-    def _get_default_serializer(self, column):
-        for check_type, serializer_class in self.DEFAULT_SERIALIZERS:
-            if check_type(column):
-                return serializer_class(column)
+    def get_model_name(self) -> str:
+        return self._mapper_class.__name__
 
-    def before_put_commit(self, model, session):
-        pass
-
-    def after_put_commit(self, model, session):
-        pass
-
-    def before_post_commit(self, model, session):
-        pass
-
-    def after_post_commit(self, model, session):
-        pass
+    @property
+    def model_columns(self) -> dict:
+        return self._mapper_class.__mapper__.c
 
     def dump(self, model):
         serial = {}
@@ -111,6 +95,37 @@ class ModelSerializer(Serializer):
             setattr(model, field_name, deserial_value)
         return model
 
+    def before_put_commit(self, model, session):
+        pass
+
+    def after_put_commit(self, model, session):
+        pass
+
+    def before_post_commit(self, model, session):
+        pass
+
+    def after_post_commit(self, model, session):
+        pass
+
+    def _get_default_serializer(self, column):
+        for check_type, serializer_class in self.DEFAULT_SERIALIZERS:
+            if check_type(column):
+                return serializer_class(column)
+
+    @classmethod
+    def _get_declared_fields(cls) -> dict:
+        fields = {}
+        # Fields should be only defined ModelSerializer subclasses,
+        if cls is ModelSerializer:
+            return fields
+        for attr_name in dir(cls):
+            if attr_name.startswith('_'):
+                continue
+            value = getattr(cls, attr_name)
+            if isinstance(value, Field):
+                fields[attr_name] = value
+        return fields
+
     def _find_existing_model(self, field, value):
         class_mapper = field.serializer._mapper_class
         pk_name = self._get_pk_name(class_mapper)
@@ -158,13 +173,14 @@ class NestedAttributesField(Field):
     A read-only field that dump nested object attributes.
     """
 
-    class NestedAttrsSerializer(Serializer):
+    class NestedAttributesSerializer(Serializer):
 
-        def __init__(self, attr_list):
-            self._attr_list = attr_list
+        def __init__(self, attributes, many):
+            self.attributes = attributes
+            self.many = many
 
         def dump(self, value):
-            if is_tomany_attribute(value):
+            if self.many:
                 serialized = [self._dump_item(item) for item in value]
             else:
                 return self._dump_item(value)
@@ -172,7 +188,7 @@ class NestedAttributesField(Field):
 
         def _dump_item(self, item):
             serialized = {}
-            for attr_name in self._attr_list:
+            for attr_name in self.attributes:
                 serialized[attr_name] = getattr(item, attr_name)
             return serialized
 
@@ -180,9 +196,9 @@ class NestedAttributesField(Field):
             raise NotImplementedError()
 
 
-    def __init__(self, attr_list, **kw):
-        super().__init__(serializer=self.NestedAttrsSerializer(attr_list), **kw)
-        assert 'serializer' not in kw, "NestedAttrsField does not support custom Serializer"
+    def __init__(self, attributes: Union[tuple, dict], many=False, **kw):
+        super().__init__(serializer=self.NestedAttributesSerializer(attributes, many), **kw)
+        assert 'serializer' not in kw, "NestedAttributesField does not support custom Serializer"
 
 
 class PrimaryKeyField(Field):
@@ -207,7 +223,6 @@ class PrimaryKeyField(Field):
             else:
                 return getattr(value, pk_column.key)
             return serialized
-
 
     def __init__(self, declarative_class, **kw):
         super().__init__(serializer=self.PrimaryKeySerializer(declarative_class), **kw)
@@ -235,4 +250,3 @@ def is_tomany_attribute(value):
     :rtype: bool
     """
     return isinstance(value, (list, AppenderMixin))
-

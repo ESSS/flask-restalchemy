@@ -1,8 +1,8 @@
 from flask_restful import Api as RestfulApi
 
-from flask_restalchemy.resources.resources import CollectionResource, ItemResource, CollectionRelationResource, \
-    ItemRelationResource, CollectionPropertyResource
-from flask_restalchemy.serialization.modelserializer import ModelSerializer
+from flask_restalchemy.resourcefactory import item_resource_factory, collection_resource_factory
+from flask_restalchemy.resources import CollectionRelationResource, ItemRelationResource, \
+    CollectionPropertyResource, ItemResource, CollectionResource
 
 
 class Api(object):
@@ -65,11 +65,8 @@ class Api(object):
         if not collection_decorators:
             collection_decorators = request_decorators
 
-        class _CollectionResource(CollectionResource):
-            method_decorators = collection_decorators
-
-        class _ItemResource(ItemResource):
-            method_decorators = request_decorators
+        _ItemResource = item_resource_factory(ItemResource, serializer, request_decorators)
+        _CollectionResource = collection_resource_factory(CollectionResource, serializer, collection_decorators)
 
         restful.add_resource(
             _CollectionResource,
@@ -84,7 +81,8 @@ class Api(object):
             resource_class_args=(model, serializer, self.get_db_session)
         )
 
-    def add_relation(self, relation_property, url_rule=None, serializer_class=None, request_decorators=None,
+    def add_relation(self, relation_property, url_rule=None, serializer_class=None,
+                     request_decorators=None,
                      collection_decorators=None, endpoint_name=None):
         """
         Create API endpoints for the given SQLAlchemy relationship.
@@ -127,11 +125,16 @@ class Api(object):
         if not collection_decorators:
             collection_decorators = request_decorators
 
-        class _CollectionRelationResource(CollectionRelationResource):
-            method_decorators = collection_decorators
-
-        class _ItemRelationResource(ItemRelationResource):
-            method_decorators = collection_decorators
+        _ItemRelationResource = item_resource_factory(
+            ItemRelationResource,
+            serializer,
+            request_decorators
+        )
+        _CollectionRelationResource = collection_resource_factory(
+            CollectionRelationResource,
+            serializer,
+            collection_decorators
+        )
 
         self._add_item_collection_resources(
             _ItemRelationResource,
@@ -156,7 +159,8 @@ class Api(object):
             resource_class_args=resource_init_args,
         )
 
-    def add_property(self, model, related_model, property_name, url_rule=None, serializer_class=None, request_decorators=[]):
+    def add_property(self, model, related_model, property_name, url_rule=None,
+                     serializer_class=None, request_decorators=[]):
         if not serializer_class:
             serializer = self.create_default_serializer(model)
         else:
@@ -174,7 +178,8 @@ class Api(object):
             _CollectionPropertyResource,
             url_rule,
             endpoint='{}-{}-property'.format(related_collection_name, property_name),
-            resource_class_args=(model, related_model, property_name, serializer, self.get_db_session)
+            resource_class_args=(
+            model, related_model, property_name, serializer, self.get_db_session)
         )
 
     def add_resource(self, *args, **kw):
@@ -190,6 +195,7 @@ class Api(object):
 
         :rtype: class
         """
+        from flask_restalchemy.serialization.modelserializer import ModelSerializer
         return ModelSerializer(model_class)
 
     def get_db_session(self):
