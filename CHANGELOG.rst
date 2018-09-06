@@ -4,6 +4,11 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.11.0
+====================
+
+
+
 v0.10.4
 ====================
 
