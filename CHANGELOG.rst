@@ -7,7 +7,13 @@ Flask-RESTAlchemy Change Log
 v0.11.0
 ====================
 
+**Changed:**
 
+* NestedAttributesField parameters must now be typed
+
+**Fixed:**
+
+* Swagger spec generation
 
 v0.10.4
 ====================
@@ -17,41 +23,25 @@ v0.10.4
 * Support for append an existent item to a relation end point
 
 
-
-
 v0.10.3
 ====================
 
-
-
 v0.10.2
 ====================
-
-
 
 v0.10.1
 ====================
 
 **Added:**
 
-None
-
 * Support for pagination and query on property end points
-
-
-
 
 v0.10.0
 ====================
 
 **Added:**
 
-None
-
 * add pre/post commit hooks to put
-
-
-
 
 v0.9.2
 ====================
