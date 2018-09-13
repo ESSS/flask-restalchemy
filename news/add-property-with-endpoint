@@ -1,0 +1,15 @@
+**Added:** None
+
+**Changed:** None
+
+**Deprecated:** None
+
+**Removed:** None
+
+**Fixed:**
+
+When adding the same property twice with different url an error occurred due to the endpoint provided to the RESTFul be
+the same. Now add_property have an optional parameter 'endpoint_name' to enable specify a different endpoint and
+defaults to the provided 'url_rule'
+
+**Security:** None
