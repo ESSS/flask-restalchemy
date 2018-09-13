@@ -108,9 +108,8 @@ class Api(object):
         """
         model = relation_property.prop.mapper.class_
         related_model = relation_property.class_
-        model_collection_name = model.__tablename__.lower()
         related_collection_name = related_model.__tablename__.lower()
-        endpoint_name = endpoint_name or '{}-{}-relation'.format(model_collection_name, related_collection_name)
+
         if not serializer_class:
             serializer = self.create_default_serializer(model)
         else:
@@ -119,6 +118,7 @@ class Api(object):
             assert '<relation_id>' in url_rule
         else:
             url_rule = '/{}/<relation_id>/{}'.format(related_collection_name, relation_property.key)
+        endpoint_name = endpoint_name or url_rule
 
         if not request_decorators:
             request_decorators = []
@@ -160,7 +160,7 @@ class Api(object):
         )
 
     def add_property(self, model, related_model, property_name, url_rule=None,
-                     serializer_class=None, request_decorators=[]):
+                     serializer_class=None, request_decorators=[], endpoint_name=None):
         if not serializer_class:
             serializer = self.create_default_serializer(model)
         else:
@@ -171,13 +171,15 @@ class Api(object):
         else:
             url_rule = '/{}/<relation_id>/{}'.format(related_collection_name, property_name.lower())
 
+        endpoint = endpoint_name or url_rule
+
         class _CollectionPropertyResource(CollectionPropertyResource):
             method_decorators = request_decorators
 
         self.add_resource(
             _CollectionPropertyResource,
             url_rule,
-            endpoint='{}-{}-property'.format(related_collection_name, property_name),
+            endpoint=endpoint,
             resource_class_args=(
             model, related_model, property_name, serializer, self.get_db_session)
         )
