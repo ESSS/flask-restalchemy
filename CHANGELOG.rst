@@ -4,6 +4,18 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.11.1
+====================
+
+**Fixed:**
+
+When adding the same property twice with different url an error occurred due to the endpoint provided to the RESTFul be
+the same. Now add_property have an optional parameter 'endpoint_name' to enable specify a different endpoint and
+defaults to the provided 'url_rule'
+
+
+
+
 v0.11.0
 ====================
 
