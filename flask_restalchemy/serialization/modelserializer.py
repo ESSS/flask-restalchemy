@@ -1,20 +1,11 @@
-from .enumserializer import EnumSerializer
-from .datetimeserializer import DateTimeSerializer
 from .fields import Field
 from .serializer import Serializer
-from flask_restalchemy.serialization.enumserializer import is_enum_field
-from flask_restalchemy.serialization.datetimeserializer import is_datetime_field
 
 
 class ModelSerializer(Serializer):
     """
     Serializer for SQLAlchemy Declarative classes
     """
-
-    DEFAULT_SERIALIZERS = [
-        (is_datetime_field, DateTimeSerializer),
-        (is_enum_field, EnumSerializer)
-    ]
 
     def __init__(self, model_class):
         """
@@ -27,9 +18,9 @@ class ModelSerializer(Serializer):
             field = self._fields.setdefault(column, Field())
             # Set a serializer for fields that can not be serialized by default
             if field.serializer is None:
-                serializer = self._get_default_serializer(self.model_columns.get(column))
-                if serializer:
-                    field._serializer = serializer
+                from flask_restalchemy import Api
+                serializer = Api.find_column_serializer(self.model_columns.get(column))
+                field._serializer = serializer
 
     @property
     def model_class(self):
@@ -40,6 +31,13 @@ class ModelSerializer(Serializer):
         return self._mapper_class.__mapper__.c
 
     def dump(self, model):
+        """
+        Create a serialized dict from a Declarative model
+
+        :param DeclarativeMeta model: the model to be serialized
+
+        :rtype: dict
+        """
         serial = {}
         for attr, field in self._fields.items():
             if field.load_only:
@@ -88,11 +86,6 @@ class ModelSerializer(Serializer):
 
     def after_post_commit(self, model, session):
         pass
-
-    def _get_default_serializer(self, column):
-        for check_type, serializer_class in self.DEFAULT_SERIALIZERS:
-            if check_type(column):
-                return serializer_class(column)
 
     @classmethod
     def _get_declared_fields(cls) -> dict:

@@ -1,12 +1,11 @@
-from datetime import datetime, timezone, timedelta
-
 import re
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import DateTime
 
-from .serializer import Serializer
+from .serializer import ColumnSerializer
 
 
-class DateTimeSerializer(Serializer):
+class DateTimeSerializer(ColumnSerializer):
     """
     Serializer for DateTime objects
     """
@@ -17,10 +16,6 @@ class DateTimeSerializer(Serializer):
                      "(?P<tz>([\+-]\d{2}:?\d{2})|[Zz])?"
 
     DATETIME_RE = re.compile(DATETIME_REGEX)
-
-
-    def __init__(self, column):
-        self.column = column
 
     def dump(self, value):
         return value.isoformat()

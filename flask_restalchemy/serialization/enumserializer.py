@@ -1,10 +1,7 @@
-from .serializer import Serializer
+from .serializer import ColumnSerializer
 
 
-class EnumSerializer(Serializer):
-
-    def __init__(self, column):
-        self.column = column
+class EnumSerializer(ColumnSerializer):
 
     def dump(self, value):
         if not value:
