@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 import pytest
 from sqlalchemy import Column, DateTime
 
-from flask_restalchemy import DateTimeSerializer
+from flask_restalchemy.serialization.datetimeserializer import DateTimeSerializer
 
 
 @pytest.mark.parametrize("serialized_date", [

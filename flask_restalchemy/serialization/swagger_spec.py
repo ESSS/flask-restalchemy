@@ -1,7 +1,8 @@
 from sqlalchemy import DateTime
 from sqlalchemy_utils import PasswordType, JSONType
 
-from .modelserializer import ModelSerializer, NestedModelField, PrimaryKeyField, NestedAttributesField, Field
+from .modelserializer import ModelSerializer
+from .fields import Field, NestedModelField, NestedAttributesField, PrimaryKeyField
 
 SWAGGER_BASIC_TYPES = {
     str: dict(type='string'),
