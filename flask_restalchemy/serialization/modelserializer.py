@@ -1,10 +1,7 @@
-from typing import Union
-
-from sqlalchemy.orm.dynamic import AppenderMixin
-from sqlalchemy.sql import sqltypes
-
-from flask_restalchemy.serialization.serializer import Serializer, DateTimeSerializer, is_datetime_field, is_enum_field, \
-    EnumSerializer
+from .enumserializer import EnumSerializer
+from .datetimeserializer import DateTimeSerializer
+from .fields import Field
+from .serializer import Serializer, is_datetime_field, is_enum_field
 
 
 class ModelSerializer(Serializer):
@@ -42,15 +39,10 @@ class ModelSerializer(Serializer):
     def dump(self, model):
         serial = {}
         for attr, field in self._fields.items():
-            if field is None:
-                serial[attr] = getattr(model, attr)
-                continue
             if field.load_only:
                 continue
             value = getattr(model, attr) if hasattr(model, attr) else None
-            if value is None:
-                serialized = None
-            elif field.serializer:
+            if value and field and field.serializer:
                 serialized = field.serializer.dump(value)
             else:
                 serialized = value
@@ -140,113 +132,3 @@ class ModelSerializer(Serializer):
         assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
         pk_name = primary_keys[0].key
         return pk_name
-
-
-class Field(object):
-    """
-    Configure a ModelSerializer field
-    """
-
-    def __init__(self, dump_only=False, load_only=False, serializer=None):
-        self.dump_only = dump_only
-        self.load_only = load_only
-        self._serializer = serializer
-
-    @property
-    def serializer(self):
-        return self._serializer
-
-
-class NestedModelField(Field):
-    """
-    A field to Dump and Update nested models.
-    """
-
-    def __init__(self, declarative_class, **kw):
-        super().__init__(**kw)
-        if self._serializer is None:
-            self._serializer = ModelSerializer(declarative_class)
-
-
-class NestedAttributesField(Field):
-    """
-    A read-only field that dump nested object attributes.
-    """
-
-    class NestedAttributesSerializer(Serializer):
-
-        def __init__(self, attributes, many):
-            self.attributes = attributes
-            self.many = many
-
-        def dump(self, value):
-            if self.many:
-                serialized = [self._dump_item(item) for item in value]
-            else:
-                return self._dump_item(value)
-            return serialized
-
-        def _dump_item(self, item):
-            serialized = {}
-            for attr_name in self.attributes:
-                serialized[attr_name] = getattr(item, attr_name)
-            return serialized
-
-        def load(self, serialized):
-            raise NotImplementedError()
-
-
-    def __init__(self, attributes: Union[tuple, dict], many=False, **kw):
-        super().__init__(serializer=self.NestedAttributesSerializer(attributes, many), **kw)
-        assert 'serializer' not in kw, "NestedAttributesField does not support custom Serializer"
-
-
-class PrimaryKeyField(Field):
-    """
-    Convert relationships in a list of primary keys (for serialization and deserialization).
-    """
-
-    class PrimaryKeySerializer(Serializer):
-
-        def __init__(self, declarative_class):
-            self.declarative_class = declarative_class
-            self._pk_column = get_model_pk(self.declarative_class)
-
-        def load(self, serialized):
-            pk_column = self._pk_column
-            return self.declarative_class.query.filter(pk_column.in_(serialized)).all()
-
-        def dump(self, value):
-            pk_column = self._pk_column
-            if is_tomany_attribute(value):
-                serialized = [getattr(item, pk_column.key) for item in value]
-            else:
-                return getattr(value, pk_column.key)
-            return serialized
-
-    def __init__(self, declarative_class, **kw):
-        super().__init__(serializer=self.PrimaryKeySerializer(declarative_class), **kw)
-
-
-def get_model_pk(declarative_class):
-    """
-    Get the primary key Column object from a Declarative model class
-
-    :param Type[DeclarativeMeta] declarative_class: a Declarative class
-
-    :rtype: Column
-    """
-    primary_keys = declarative_class.__mapper__.primary_key
-    assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
-    return primary_keys[0]
-
-
-def is_tomany_attribute(value):
-    """
-    Check if the Declarative relationship attribute represents a to-many relationship.
-
-    :param value: a SQLAlchemy Declarative class relationship attribute
-
-    :rtype: bool
-    """
-    return isinstance(value, (list, AppenderMixin))

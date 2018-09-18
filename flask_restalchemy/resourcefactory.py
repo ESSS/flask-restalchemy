@@ -1,13 +1,16 @@
-from .serialization.modelserializer import ModelSerializer
 from .serialization.swagger_spec import gen_spec
 
 
-def item_resource_factory(item_resource_class, serializer: ModelSerializer, item_decorators = None):
+def item_resource_factory(item_resource_class, serializer, item_decorators = None):
     '''
     Creates a new Resource class in runtime to allow use of Flasgger to automatic generate Swagger specs,
     since Flaggers needs a different resource class for each REST resource.
 
     Note: this is inefficient and makes the code harder to read. See #26
+
+    :param item_resource_class:
+    :param ModelSerializer serializer:
+    :param item_decorators:
     '''
 
     item_decorators = item_decorators or []
@@ -28,12 +31,16 @@ def item_resource_factory(item_resource_class, serializer: ModelSerializer, item
     return _ItemResource
 
 
-def collection_resource_factory(collection_resource_class, serializer: ModelSerializer, collection_decorators=None):
+def collection_resource_factory(collection_resource_class, serializer, collection_decorators=None):
     '''
     Creates a new Resource class in runtime to allow use of Flasgger to automatic generate Swagger specs,
     since Flaggers needs a different resource class for each REST resource.
 
     Note: this is inefficient and makes the code harder to read. See #26
+
+    :param collection_resource_class:
+    :param ModelSerializer serializer:
+    :param collection_decorators:
     '''
 
     class _CollectionResource(collection_resource_class):
