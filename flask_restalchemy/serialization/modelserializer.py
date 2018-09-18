@@ -1,7 +1,9 @@
 from .enumserializer import EnumSerializer
 from .datetimeserializer import DateTimeSerializer
 from .fields import Field
-from .serializer import Serializer, is_datetime_field, is_enum_field
+from .serializer import Serializer
+from flask_restalchemy.serialization.enumserializer import is_enum_field
+from flask_restalchemy.serialization.datetimeserializer import is_datetime_field
 
 
 class ModelSerializer(Serializer):
@@ -29,11 +31,12 @@ class ModelSerializer(Serializer):
                 if serializer:
                     field._serializer = serializer
 
-    def get_model_name(self) -> str:
-        return self._mapper_class.__name__
+    @property
+    def model_class(self):
+        return self._mapper_class
 
     @property
-    def model_columns(self) -> dict:
+    def model_columns(self):
         return self._mapper_class.__mapper__.c
 
     def dump(self, model):
@@ -42,8 +45,8 @@ class ModelSerializer(Serializer):
             if field.load_only:
                 continue
             value = getattr(model, attr) if hasattr(model, attr) else None
-            if value and field and field.serializer:
-                serialized = field.serializer.dump(value)
+            if field:
+                serialized = field.dump(value)
             else:
                 serialized = value
             serial[attr] = serialized
@@ -61,31 +64,18 @@ class ModelSerializer(Serializer):
         """
         if existing_model:
             model = existing_model
-            # If deserialization must update an existing model, check if primary key is the same
-            pk_name = self._get_pk_name(existing_model)
-            assert getattr(existing_model, pk_name) == serialized[pk_name], \
-                "Primary key value of serialized nested object is inconsistent"
         else:
             model = self._mapper_class()
         for field_name, value in serialized.items():
             field = self._fields[field_name]
             if field.dump_only:
                 continue
-            if value is None:
-                deserial_value = value
-            elif field.serializer:
-                if isinstance(field.serializer, ModelSerializer):
-                    if existing_model:
-                        existing_nested = getattr(existing_model, field_name)
-                    else:
-                        existing_nested = self._find_existing_model(field, value)
-                    deserial_value = field.serializer.load(value, existing_nested)
-                else:
-                    deserial_value = field.serializer.load(value)
-            else:
-                deserial_value = value
-            setattr(model, field_name, deserial_value)
+            deserialized = field.load(value)
+            setattr(model, field_name, deserialized)
         return model
+
+    def get_model_name(self) -> str:
+        return self._mapper_class.__name__
 
     def before_put_commit(self, model, session):
         pass
@@ -117,18 +107,3 @@ class ModelSerializer(Serializer):
             if isinstance(value, Field):
                 fields[attr_name] = value
         return fields
-
-    def _find_existing_model(self, field, value):
-        class_mapper = field.serializer._mapper_class
-        pk_name = self._get_pk_name(class_mapper)
-        pk = value.get(pk_name)
-        if pk:
-            return class_mapper.query.get(pk)
-        else:
-            return None
-
-    def _get_pk_name(self, existing_model):
-        primary_keys = existing_model.__mapper__.primary_key
-        assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
-        pk_name = primary_keys[0].key
-        return pk_name
