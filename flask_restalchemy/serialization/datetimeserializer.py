@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 
 import re
+from sqlalchemy import DateTime
 
 from .serializer import Serializer
 
@@ -17,6 +18,9 @@ class DateTimeSerializer(Serializer):
 
     DATETIME_RE = re.compile(DATETIME_REGEX)
 
+
+    def __init__(self, column):
+        self.column = column
 
     def dump(self, value):
         return value.isoformat()
@@ -45,3 +49,17 @@ class DateTimeSerializer(Serializer):
             if offset_str[0] == "-" and hours == 0:
                 minutes = -minutes
             return timezone(timedelta(hours=hours, minutes=minutes))
+
+
+def is_datetime_field(col):
+    """
+    Check if a column is DateTime (or implements DateTime)
+
+    :param Column col: the column object to be checked
+
+    :rtype: bool
+    """
+    if hasattr(col.type, "impl"):
+        return type(col.type.impl) is DateTime
+    else:
+        return type(col.type) is DateTime

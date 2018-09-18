@@ -2,7 +2,6 @@ from sqlalchemy.orm.dynamic import AppenderMixin
 from typing import Union
 
 
-
 class Field(object):
     """
     Configure a ModelSerializer field
@@ -18,6 +17,20 @@ class Field(object):
         return self._serializer
 
 
+    def dump(self, value):
+        if value and self.serializer:
+            return self.serializer.dump(value)
+        else:
+            return value
+
+
+    def load(self, serialized):
+        if serialized and self.serializer:
+            return self.serializer.load(serialized)
+        else:
+            return serialized
+
+
 class NestedModelField(Field):
     """
     A field to Dump and Update nested models.
@@ -29,6 +42,28 @@ class NestedModelField(Field):
         super().__init__(**kw)
         if self._serializer is None:
             self._serializer = ModelSerializer(declarative_class)
+
+    def load(self, serialized):
+        if not serialized:
+            return None
+        class_mapper = self.serializer.model_class
+        pk_attr = self._get_pk_attr_name(class_mapper)
+        pk = serialized.get(pk_attr)
+        if pk:
+            # Serialized object has a primary key, so we load an existing model from the database
+            # instead of creating one
+            existing_model = class_mapper.query.get(pk)
+            return self.serializer.load(serialized, existing_model)
+        else:
+            # No primary key, just create a new model entity
+            return self.serializer.load(serialized)
+
+    @staticmethod
+    def _get_pk_attr_name(declarative_model):
+        primary_keys = declarative_model.__mapper__.primary_key
+        assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
+        pk_name = primary_keys[0].key
+        return pk_name
 
 
 class NestedAttributesField(Field):
@@ -60,9 +95,9 @@ class NestedAttributesField(Field):
             raise NotImplementedError()
 
 
-    def __init__(self, attributes: Union[tuple, dict], many=False, **kw):
-        super().__init__(serializer=self.NestedAttributesSerializer(attributes, many), **kw)
-        assert 'serializer' not in kw, "NestedAttributesField does not support custom Serializer"
+    def __init__(self, attributes: Union[tuple, dict], many=False):
+        serializer = self.NestedAttributesSerializer(attributes, many)
+        super().__init__(dump_only=True, serializer=serializer)
 
 
 class PrimaryKeyField(Field):
