@@ -2,6 +2,9 @@
 
 **Changed:** None
 
+Change the way Column Serializers are registered: by using Api class method
+`register_column_serializer` (instead of ModelSerializer.DEFAULT_SERIALIZER class attribute).
+
 **Deprecated:** None
 
 **Removed:** None
