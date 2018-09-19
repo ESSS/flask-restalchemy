@@ -216,7 +216,7 @@ class Api(object):
             self._db = flask_app.extensions['sqlalchemy'].db
         return self._db.session
 
-    FIELD_SERIALIZERS = [
+    _FIELD_SERIALIZERS = [
         (DateTimeSerializer, is_datetime_field),
         (EnumSerializer, is_enum_field)
     ]
@@ -232,7 +232,7 @@ class Api(object):
         '''
         if not isinstance(serializer_class, ColumnSerializer):
             raise TypeError('Invalid serializer class')
-        cls.FIELD_SERIALIZERS.append((serializer_class, predicate))
+        cls._FIELD_SERIALIZERS.append((serializer_class, predicate))
 
 
     @classmethod
@@ -242,7 +242,7 @@ class Api(object):
 
         :rtype: ColumnSerializer
         '''
-        for serializer_class, predicate in reversed(Api.FIELD_SERIALIZERS):
+        for serializer_class, predicate in reversed(cls._FIELD_SERIALIZERS):
             if predicate(column):
                 return serializer_class(column)
         else:
