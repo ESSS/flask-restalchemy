@@ -228,11 +228,11 @@ class Api(object):
         '''
         Register a serializer for a given column to be used globally by ModelSerializers
 
-        :param ColumnSerializer serializer_class: the Serializer class
+        :param Type[ColumnSerializer] serializer_class: the Serializer class
         :param callable predicate: a function that receives a column type and returns True if the
             given serializer is valid for that column
         '''
-        if not isinstance(serializer_class, ColumnSerializer):
+        if not issubclass(serializer_class, ColumnSerializer):
             raise TypeError('Invalid serializer class')
         cls._FIELD_SERIALIZERS.append((serializer_class, predicate))
 
