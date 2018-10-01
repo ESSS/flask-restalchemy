@@ -6,6 +6,8 @@
 
 **Removed:** None
 
-**Fixed:** None
+**Fixed:**
+
+Type checking registration on `register_column_serializer` method
 
 **Security:** None

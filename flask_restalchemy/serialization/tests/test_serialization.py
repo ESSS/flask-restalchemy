@@ -1,10 +1,10 @@
 import datetime
-
 import pytest
 
-from flask_restalchemy import PrimaryKeyField
+from flask_restalchemy.serialization import PrimaryKeyField, Field, NestedModelField, \
+    NestedAttributesField
+from flask_restalchemy.serialization.modelserializer import ModelSerializer
 from flask_restalchemy.serialization.swagger_spec import gen_spec
-from flask_restalchemy.serialization.modelserializer import ModelSerializer, Field, NestedModelField, NestedAttributesField
 from flask_restalchemy.tests.sample_model import Employee, Company, Address, Department
 
 

@@ -4,6 +4,21 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.12.1
+====================
+
+
+
+v0.12.0
+====================
+
+**Changed:**
+
+Change the way Column Serializers are registered: by using Api class method
+`register_column_serializer` (instead of ModelSerializer.DEFAULT_SERIALIZER class attribute).
+
+
+
 v0.11.1
 ====================
 
@@ -12,9 +27,6 @@ v0.11.1
 When adding the same property twice with different url an error occurred due to the endpoint provided to the RESTFul be
 the same. Now add_property have an optional parameter 'endpoint_name' to enable specify a different endpoint and
 defaults to the provided 'url_rule'
-
-
-
 
 v0.11.0
 ====================

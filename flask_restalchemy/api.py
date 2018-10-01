@@ -3,13 +3,16 @@ from flask_restful import Api as RestfulApi
 from flask_restalchemy.resourcefactory import item_resource_factory, collection_resource_factory
 from flask_restalchemy.resources import CollectionRelationResource, ItemRelationResource, \
     CollectionPropertyResource, ItemResource, CollectionResource
+from flask_restalchemy.serialization import ColumnSerializer
+from flask_restalchemy.serialization.datetimeserializer import is_datetime_field, DateTimeSerializer
+from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSerializer
 
 
 class Api(object):
 
-    def __init__(self, app_or_bp=None, prefix='', errors=None, request_decorators=None):
+    def __init__(self, blueprint=None, prefix='', errors=None, request_decorators=None):
         """
-        :param (Flask|Blueprint) app_or_bp: Flask application or Blueprint
+        :param (Flask|Blueprint) blueprint: Flask application or Blueprint
 
         :param str prefix: API endpoints prefix
 
@@ -19,10 +22,10 @@ class Api(object):
         :param callable request_decorators: request decorators for this API object (see
             Flask-Restful decorators docs for more information)
         """
-        self.restful_api = RestfulApi(app=app_or_bp, prefix=prefix, decorators=request_decorators,
+        self.restful_api = RestfulApi(app=blueprint, prefix=prefix, decorators=request_decorators,
                                       default_mediatype='application/json', errors=errors)
-        if app_or_bp:
-            self.init_app(app_or_bp)
+        if blueprint:
+            self.init_app(blueprint)
         self._db = None
 
     def init_app(self, app):
@@ -214,3 +217,35 @@ class Api(object):
             assert flask_app and flask_app.extensions, "Flask App not initialized yey"
             self._db = flask_app.extensions['sqlalchemy'].db
         return self._db.session
+
+    _FIELD_SERIALIZERS = [
+        (DateTimeSerializer, is_datetime_field),
+        (EnumSerializer, is_enum_field)
+    ]
+
+    @classmethod
+    def register_column_serializer(cls, serializer_class, predicate):
+        '''
+        Register a serializer for a given column to be used globally by ModelSerializers
+
+        :param Type[ColumnSerializer] serializer_class: the Serializer class
+        :param callable predicate: a function that receives a column type and returns True if the
+            given serializer is valid for that column
+        '''
+        if not issubclass(serializer_class, ColumnSerializer):
+            raise TypeError('Invalid serializer class')
+        cls._FIELD_SERIALIZERS.append((serializer_class, predicate))
+
+
+    @classmethod
+    def find_column_serializer(cls, column):
+        '''
+        :param Column column: search for a registered serializer for the given column
+
+        :rtype: ColumnSerializer
+        '''
+        for serializer_class, predicate in reversed(cls._FIELD_SERIALIZERS):
+            if predicate(column):
+                return serializer_class(column)
+        else:
+            return None

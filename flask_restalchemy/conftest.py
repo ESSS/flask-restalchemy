@@ -2,6 +2,7 @@ import json
 
 import pytest
 from flask import Flask
+
 from flask_restalchemy.tests.sample_model import db
 
 
