@@ -30,6 +30,10 @@ class ModelSerializer(Serializer):
     def model_columns(self):
         return self._mapper_class.__mapper__.c
 
+    @property
+    def fields(self):
+        return self._fields.copy()
+
     def dump(self, model):
         """
         Create a serialized dict from a Declarative model

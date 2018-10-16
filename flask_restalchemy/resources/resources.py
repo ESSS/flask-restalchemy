@@ -6,7 +6,7 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.orm.collections import InstrumentedList
 
 from flask_restalchemy.serialization.modelserializer import ModelSerializer
-from .utils import query_from_request
+from .querybuilder import query_from_request
 
 
 class BaseResource(Resource):
