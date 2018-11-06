@@ -1,15 +1,19 @@
 import warnings
+from collections import defaultdict
 
 from flask import request, json
 from flask_restful import Resource
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm.collections import InstrumentedList
 
+from flask_restalchemy.resources.processors import GET_ITEM, PUT, DELETE, GET_COLLECTION, POST
 from flask_restalchemy.serialization.modelserializer import ModelSerializer
 from .querybuilder import query_from_request
 
 
 class BaseResource(Resource):
+    preprocessors = defaultdict(list, {})
+    postprocessors = defaultdict(list, {})
 
     def __init__(self, declarative_model, serializer, session_getter):
         """
@@ -22,6 +26,10 @@ class BaseResource(Resource):
 
         :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
             DB session may not be available on the resource initialization.
+
+        :param preprocessors: A dict with the lists of callable preprocessors for each API method
+
+        :param postprocessors: A dict with the lists of callable postprocessors for each API method
         """
         self._resource_model = declarative_model
         self._serializer = serializer
@@ -76,25 +84,48 @@ class ItemResource(BaseResource):
     """
 
     def get(self, id):
+        for preprocessor in self.preprocessors[GET_ITEM]:
+            preprocessor(resource_id=id)
+
         data = self._resource_model.query.get(id)
         if data is None:
             return NOT_FOUND_ERROR, 404
         return self._serializer.dump(data)
 
     def put(self, id):
+        request_data=load_request_data()
+
+        for preprocessor in self.preprocessors[PUT]:
+            preprocessor(resource_id=id, data=request_data)
+
         data = self._resource_model.query.get(id)
         if data is None:
             return NOT_FOUND_ERROR, 404
+
         serialized = self._serializer.dump(data)
-        serialized.update(load_request_data())
-        return self._save_serialized(serialized, data)
+        serialized.update(request_data)
+        result = self._save_serialized(serialized, data)
+
+        for postprocessor in self.postprocessors[PUT]:
+            postprocessor(result=result)
+
+        return result
 
     def delete(self, id):
+        for preprocessor in self.preprocessors[DELETE]:
+            preprocessor(resource_id=id)
+
         data = self._resource_model.query.get(id)
         if data is None:
             return NOT_FOUND_ERROR, 404
         session = self._db_session
         session.delete(data)
+        was_deleted = len(session.deleted) > 0
+        session.flush()
+
+        for postprocessor in self.postprocessors[DELETE]:
+            postprocessor(was_deleted=was_deleted)
+
         session.commit()
         return '', 204
 
@@ -106,11 +137,23 @@ class CollectionResource(BaseResource):
     """
 
     def get(self):
+        for preprocessor in self.preprocessors[GET_COLLECTION]:
+            preprocessor()
+
         data = query_from_request(self._resource_model, self._serializer, request)
         return data
 
     def post(self):
-        saved = self._save_serialized(load_request_data())
+        document = load_request_data()
+
+        for preprocessor in self.preprocessors[POST]:
+            preprocessor(data=document)
+
+        saved = self._save_serialized(document)
+
+        for postprocessor in self.postprocessors[POST]:
+            postprocessor(result=saved)
+
         return saved, 201
 
 
@@ -139,6 +182,9 @@ class CollectionRelationResource(BaseResource):
         self._related_model = relation_property.class_
 
     def get(self, relation_id):
+        for preprocessor in self.preprocessors[GET_COLLECTION]:
+            preprocessor(relation_id=relation_id)
+
         session = self._db_session()
 
         # using options(load_only('id')) avoid unintended subquerying, as all we want is check if the element exists
@@ -157,12 +203,17 @@ class CollectionRelationResource(BaseResource):
         return collection
 
     def post(self, relation_id):
+
         session = self._db_session()
         related_obj = session.query(self._related_model).get(relation_id)
         if not related_obj:
             return NOT_FOUND_ERROR, 404
         collection = getattr(related_obj, self._relation_property.key)
         data_dict = load_request_data()
+
+        for preprocessor in self.preprocessors[POST]:
+            preprocessor(relation_id=relation_id, data=data_dict)
+
         resource_id = data_dict.get('id', None)
 
         if resource_id is not None:
@@ -173,7 +224,12 @@ class CollectionRelationResource(BaseResource):
         collection.append(new_obj)
 
         self._save_model(new_obj, 'POST')
-        return self._serializer.dump(new_obj), 201
+        saved = self._serializer.dump(new_obj)
+
+        for postprocessor in self.postprocessors[POST]:
+            postprocessor(result=saved)
+
+        return saved, 201
 
     def append_existent(self, collection, resource_id, session):
         resource_obj = session.query(self._resource_model).get(resource_id)
@@ -209,25 +265,46 @@ class ItemRelationResource(BaseResource):
         self._related_model = relation_property.class_
 
     def get(self, relation_id, id):
+        for preprocessor in self.preprocessors[GET_ITEM]:
+            preprocessor(relation_id=relation_id, resource_id=id)
+
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
         return self._serializer.dump(requested_obj), 200
 
     def put(self, relation_id, id):
+        request_data = load_request_data()
+        for preprocessor in self.preprocessors[PUT]:
+            preprocessor(relation_id=relation_id, resource_id=id, data=request_data)
+
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
         serialized = self._serializer.dump(requested_obj)
-        serialized.update(load_request_data())
-        return self._save_serialized(serialized, requested_obj)
+        serialized.update(request_data)
+        saved = self._save_serialized(serialized, requested_obj)
+
+        for postprocessor in self.postprocessors[PUT]:
+            postprocessor(result=saved)
+
+        return saved
 
     def delete(self, relation_id, id):
+        for preprocessor in self.preprocessors[DELETE]:
+            preprocessor(relation_id=relation_id, resource_id=id)
+
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
         session = self._db_session()
         session.delete(requested_obj)
+        was_deleted = len(session.deleted) > 0
+        session.flush()
+
+        for postprocessor in self.postprocessors[DELETE]:
+            postprocessor(was_deleted=was_deleted)
+
         session.commit()
         return '', 204
 
@@ -261,6 +338,9 @@ class CollectionPropertyResource(CollectionRelationResource):
         self._property_name = property_name
 
     def get(self, relation_id):
+        for preprocessor in self.preprocessors[GET_COLLECTION]:
+            preprocessor(relation_id=relation_id)
+
         session = self._db_session()
         related_obj = session.query(self._related_model).get(relation_id)
         if related_obj is None:

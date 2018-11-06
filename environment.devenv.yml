@@ -1,6 +1,7 @@
 name: flask-restalchemy
 
 dependencies:
+  - python>=3.4
   - flask
   - sqlalchemy>=1.1
   - sqlalchemy-utils>=0.30
@@ -8,6 +9,7 @@ dependencies:
   - flask-sqlalchemy>=2.3.0
   - pytest
   - pytest-datadir
+  - pytest-mock>=1.10.0
 
 
 environment:
