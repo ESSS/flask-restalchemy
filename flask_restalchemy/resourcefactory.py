@@ -1,7 +1,11 @@
+from collections import defaultdict
+
+from flask_restalchemy.resources import CollectionPropertyResource
 from .serialization.swagger_spec import gen_spec
 
 
-def item_resource_factory(item_resource_class, serializer, item_decorators = None):
+def item_resource_factory(item_resource_class, serializer, item_decorators = None, preprocessors_dict=None,
+                          postprocessors_dict=None):
     '''
     Creates a new Resource class in runtime to allow use of Flasgger to automatic generate Swagger specs,
     since Flaggers needs a different resource class for each REST resource.
@@ -17,6 +21,8 @@ def item_resource_factory(item_resource_class, serializer, item_decorators = Non
 
     class _ItemResource(item_resource_class):
         method_decorators = item_decorators
+        preprocessors = defaultdict(list, preprocessors_dict or {})
+        postprocessors = defaultdict(list, postprocessors_dict or {})
 
         def get(self, **kw): return item_resource_class.get(self, **kw)
 
@@ -31,7 +37,8 @@ def item_resource_factory(item_resource_class, serializer, item_decorators = Non
     return _ItemResource
 
 
-def collection_resource_factory(collection_resource_class, serializer, collection_decorators=None):
+def collection_resource_factory(collection_resource_class, serializer, collection_decorators=None,
+                                preprocessors_dict=None, postprocessors_dict=None):
     '''
     Creates a new Resource class in runtime to allow use of Flasgger to automatic generate Swagger specs,
     since Flaggers needs a different resource class for each REST resource.
@@ -45,6 +52,8 @@ def collection_resource_factory(collection_resource_class, serializer, collectio
 
     class _CollectionResource(collection_resource_class):
         method_decorators = collection_decorators
+        preprocessors = defaultdict(list, preprocessors_dict or {})
+        postprocessors = defaultdict(list, postprocessors_dict or {})
 
         def get(self, **kw): return collection_resource_class.get(self, **kw)
 
@@ -55,3 +64,12 @@ def collection_resource_factory(collection_resource_class, serializer, collectio
 
 
     return _CollectionResource
+
+
+def property_resource_factory(request_decorators=None, preprocessors_dict=None, postprocessors_dict=None):
+    class _CollectionPropertyResource(CollectionPropertyResource):
+        method_decorators = request_decorators
+        preprocessors = defaultdict(list, preprocessors_dict or {})
+        postprocessors = defaultdict(list, postprocessors_dict or {})
+
+    return _CollectionPropertyResource

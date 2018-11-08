@@ -1,8 +1,18 @@
 from flask_restful import Api as RestfulApi
 
-from flask_restalchemy.resourcefactory import item_resource_factory, collection_resource_factory
+from flask_restalchemy.resourcefactory import item_resource_factory, collection_resource_factory, \
+    property_resource_factory
 from flask_restalchemy.resources import CollectionRelationResource, ItemRelationResource, \
-    CollectionPropertyResource, ItemResource, CollectionResource
+    ItemResource, CollectionResource
+from flask_restalchemy.serialization import ColumnSerializer
+from flask_restalchemy.serialization.datetimeserializer import is_datetime_field, DateTimeSerializer
+from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSerializer
+from flask_restful import Api as RestfulApi
+
+from flask_restalchemy.resourcefactory import item_resource_factory, collection_resource_factory, \
+    property_resource_factory
+from flask_restalchemy.resources import CollectionRelationResource, ItemRelationResource, \
+    ItemResource, CollectionResource
 from flask_restalchemy.serialization import ColumnSerializer
 from flask_restalchemy.serialization.datetimeserializer import is_datetime_field, DateTimeSerializer
 from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSerializer
@@ -32,7 +42,7 @@ class Api(object):
         self.restful_api.init_app(app)
 
     def add_model(self, model, url=None, serializer_class=None, request_decorators=None,
-                  collection_decorators=None, collection_name=None):
+                  collection_decorators=None, collection_name=None, preprocessors=None, postprocessors=None):
         """
         Create API endpoints for the given SQLAlchemy declarative class.
 
@@ -54,6 +64,10 @@ class Api(object):
 
         :param list|dict collection_decorators: decorators to be applied to HTTP methods for collections. It defaults to
             request_decorators value.
+
+        :param preprocessors: A dict with the lists of callable preprocessors for each API method
+
+        :param postprocessors: A dict with the lists of callable postprocessors for each API method
         """
         restful = self.restful_api
         collection_name = collection_name or model.__tablename__
@@ -68,8 +82,20 @@ class Api(object):
         if not collection_decorators:
             collection_decorators = request_decorators
 
-        _ItemResource = item_resource_factory(ItemResource, serializer, request_decorators)
-        _CollectionResource = collection_resource_factory(CollectionResource, serializer, collection_decorators)
+        _ItemResource = item_resource_factory(
+            ItemResource,
+            serializer,
+            request_decorators,
+            preprocessors,
+            postprocessors
+        )
+        _CollectionResource = collection_resource_factory(
+            CollectionResource,
+            serializer,
+            collection_decorators,
+            preprocessors,
+            postprocessors
+        )
 
         restful.add_resource(
             _CollectionResource,
@@ -85,8 +111,8 @@ class Api(object):
         )
 
     def add_relation(self, relation_property, url_rule=None, serializer_class=None,
-                     request_decorators=None,
-                     collection_decorators=None, endpoint_name=None):
+                     request_decorators=None, collection_decorators=None, endpoint_name=None,
+                     preprocessors=None, postprocessors=None):
         """
         Create API endpoints for the given SQLAlchemy relationship.
 
@@ -131,12 +157,16 @@ class Api(object):
         _ItemRelationResource = item_resource_factory(
             ItemRelationResource,
             serializer,
-            request_decorators
+            request_decorators,
+            preprocessors,
+            postprocessors
         )
         _CollectionRelationResource = collection_resource_factory(
             CollectionRelationResource,
             serializer,
-            collection_decorators
+            collection_decorators,
+            preprocessors,
+            postprocessors
         )
 
         self._add_item_collection_resources(
@@ -163,7 +193,8 @@ class Api(object):
         )
 
     def add_property(self, model, related_model, property_name, url_rule=None,
-                     serializer_class=None, request_decorators=[], endpoint_name=None):
+                     serializer_class=None, request_decorators=[], endpoint_name=None,
+                     preprocessors=None, postprocessors=None):
         if not serializer_class:
             serializer = self.create_default_serializer(model)
         else:
@@ -176,8 +207,7 @@ class Api(object):
 
         endpoint = endpoint_name or url_rule
 
-        class _CollectionPropertyResource(CollectionPropertyResource):
-            method_decorators = request_decorators
+        _CollectionPropertyResource = property_resource_factory(request_decorators, preprocessors, postprocessors)
 
         self.add_resource(
             _CollectionPropertyResource,

@@ -5,3 +5,4 @@ flask-restful>=0.3.0
 flask-sqlalchemy>=2.3.0
 pytest
 pytest-datadir
+pytest-mock>=1.10.0
