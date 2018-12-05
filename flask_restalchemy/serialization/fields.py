@@ -114,7 +114,10 @@ class PrimaryKeyField(Field):
 
         def load(self, serialized):
             pk_column = self._pk_column
-            return self.declarative_class.query.filter(pk_column.in_(serialized)).all()
+            query_results = self.declarative_class.query.filter(pk_column.in_(serialized)).all()
+            if len(serialized) != len(query_results):
+                raise ValueError("Not all primary keys found for '{}'".format(self._pk_column))
+            return query_results
 
         def dump(self, value):
             pk_column = self._pk_column
