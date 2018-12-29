@@ -1,5 +1,3 @@
-
-from flask_restalchemy.resourcefactory import property_resource_factory
 from flask_restalchemy.resources import ToManyRelationResource, ModelResource, \
     CollectionPropertyResource
 from flask_restalchemy.serialization import ColumnSerializer
@@ -9,7 +7,7 @@ from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSe
 
 class Api(object):
 
-    def __init__(self, blueprint=None, prefix='', errors=None, request_decorators=None):
+    def __init__(self, blueprint=None, errors=None, request_decorators=None):
         """
         :param (Flask|Blueprint) blueprint: Flask application or Blueprint
 
