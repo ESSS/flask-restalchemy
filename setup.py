@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 
 install_requires=[
-    'flask-restful>=0.3.0',
     'flask-sqlalchemy >= 2.3.0',
     'flask',
     'sqlalchemy>=1.1',

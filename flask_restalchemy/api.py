@@ -1,18 +1,7 @@
-from flask_restful import Api as RestfulApi
 
-from flask_restalchemy.resourcefactory import item_resource_factory, collection_resource_factory, \
-    property_resource_factory
-from flask_restalchemy.resources import CollectionRelationResource, ItemRelationResource, \
-    ItemResource, CollectionResource
-from flask_restalchemy.serialization import ColumnSerializer
-from flask_restalchemy.serialization.datetimeserializer import is_datetime_field, DateTimeSerializer
-from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSerializer
-from flask_restful import Api as RestfulApi
-
-from flask_restalchemy.resourcefactory import item_resource_factory, collection_resource_factory, \
-    property_resource_factory
-from flask_restalchemy.resources import CollectionRelationResource, ItemRelationResource, \
-    ItemResource, CollectionResource
+from flask_restalchemy.resourcefactory import property_resource_factory
+from flask_restalchemy.resources import ToManyRelationResource, ModelResource, \
+    CollectionPropertyResource
 from flask_restalchemy.serialization import ColumnSerializer
 from flask_restalchemy.serialization.datetimeserializer import is_datetime_field, DateTimeSerializer
 from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSerializer
@@ -32,14 +21,12 @@ class Api(object):
         :param callable request_decorators: request decorators for this API object (see
             Flask-Restful decorators docs for more information)
         """
-        self.restful_api = RestfulApi(app=blueprint, prefix=prefix, decorators=request_decorators,
-                                      default_mediatype='application/json', errors=errors)
-        if blueprint:
-            self.init_app(blueprint)
+        self.default_mediatype = 'application/json'
+        self._blueprint = blueprint
         self._db = None
 
-    def init_app(self, app):
-        self.restful_api.init_app(app)
+    def init_app(self, blueprint):
+        self._blueprint = blueprint
 
     def add_model(self, model, url=None, serializer_class=None, request_decorators=None,
                   collection_decorators=None, collection_name=None, preprocessors=None, postprocessors=None):
@@ -69,7 +56,6 @@ class Api(object):
 
         :param postprocessors: A dict with the lists of callable postprocessors for each API method
         """
-        restful = self.restful_api
         collection_name = collection_name or model.__tablename__
         if not serializer_class:
             serializer = self.create_default_serializer(model)
@@ -82,33 +68,8 @@ class Api(object):
         if not collection_decorators:
             collection_decorators = request_decorators
 
-        _ItemResource = item_resource_factory(
-            ItemResource,
-            serializer,
-            request_decorators,
-            preprocessors,
-            postprocessors
-        )
-        _CollectionResource = collection_resource_factory(
-            CollectionResource,
-            serializer,
-            collection_decorators,
-            preprocessors,
-            postprocessors
-        )
-
-        restful.add_resource(
-            _CollectionResource,
-            url,
-            endpoint=collection_name + '-list',
-            resource_class_args=(model, serializer, self.get_db_session),
-        )
-        restful.add_resource(
-            _ItemResource,
-            url + '/<id>',
-            endpoint=collection_name,
-            resource_class_args=(model, serializer, self.get_db_session)
-        )
+        view_func = ModelResource.as_view(collection_name, model, serializer, self.get_db_session)
+        self.register_view(view_func, url)
 
     def add_relation(self, relation_property, url_rule=None, serializer_class=None,
                      request_decorators=None, collection_decorators=None, endpoint_name=None,
@@ -116,7 +77,8 @@ class Api(object):
         """
         Create API endpoints for the given SQLAlchemy relationship.
 
-        :param relation_property: model relationship representing the collection to receive the CRUD operations
+        :param relation_property: model relationship representing the collection to receive the
+            CRUD operations.
 
         :param string url_rule: one or more url routes to match for the resource, standard
              flask routing rules apply. Defaults to model name in lower case.
@@ -137,7 +99,7 @@ class Api(object):
         """
         model = relation_property.prop.mapper.class_
         related_model = relation_property.class_
-        related_collection_name = related_model.__tablename__.lower()
+        view_name = "{}.{}".format(model.__tablename__, related_model.__tablename__).lower()
 
         if not serializer_class:
             serializer = self.create_default_serializer(model)
@@ -146,7 +108,8 @@ class Api(object):
         if url_rule:
             assert '<relation_id>' in url_rule
         else:
-            url_rule = '/{}/<relation_id>/{}'.format(related_collection_name, relation_property.key)
+            parent_endpoint = related_model.__tablename__.lower()
+            url_rule = '/{}/<relation_id>/{}'.format(parent_endpoint, relation_property.key)
         endpoint_name = endpoint_name or url_rule
 
         if not request_decorators:
@@ -154,71 +117,43 @@ class Api(object):
         if not collection_decorators:
             collection_decorators = request_decorators
 
-        _ItemRelationResource = item_resource_factory(
-            ItemRelationResource,
-            serializer,
-            request_decorators,
-            preprocessors,
-            postprocessors
+        view_func = ToManyRelationResource.as_view(
+            view_name, relation_property, serializer, self.get_db_session
         )
-        _CollectionRelationResource = collection_resource_factory(
-            CollectionRelationResource,
-            serializer,
-            collection_decorators,
-            preprocessors,
-            postprocessors
-        )
+        self.register_view(view_func, url_rule)
 
-        self._add_item_collection_resources(
-            _ItemRelationResource,
-            _CollectionRelationResource,
-            url_rule,
-            endpoint_name,
-            resource_init_args=(relation_property, serializer, self.get_db_session),
-        )
-
-    def _add_item_collection_resources(self, item_resource, collection_resource, url_rule, endpoint,
-                                       resource_init_args):
-        self.add_resource(
-            item_resource,
-            url_rule + '/<id>',
-            endpoint=endpoint,
-            resource_class_args=resource_init_args,
-        )
-        self.add_resource(
-            collection_resource,
-            url_rule,
-            endpoint=endpoint + '-list',
-            resource_class_args=resource_init_args,
-        )
-
-    def add_property(self, model, related_model, property_name, url_rule=None,
+    def add_property(self, property_type, model, property_name, url_rule=None,
                      serializer_class=None, request_decorators=[], endpoint_name=None,
                      preprocessors=None, postprocessors=None):
         if not serializer_class:
-            serializer = self.create_default_serializer(model)
+            serializer = self.create_default_serializer(property_type)
         else:
-            serializer = serializer_class(model)
-        related_collection_name = related_model.__tablename__.lower()
+            serializer = serializer_class(property_type)
+        view_name = "{}.{}".format(model.__tablename__, property_name).lower()
         if url_rule:
             assert '<relation_id>' in url_rule
         else:
-            url_rule = '/{}/<relation_id>/{}'.format(related_collection_name, property_name.lower())
+            parent_endpoint = (model.__tablename__.lower())
+            url_rule = '/{}/<relation_id>/{}'.format(parent_endpoint, property_name.lower())
 
         endpoint = endpoint_name or url_rule
 
-        _CollectionPropertyResource = property_resource_factory(request_decorators, preprocessors, postprocessors)
-
-        self.add_resource(
-            _CollectionPropertyResource,
-            url_rule,
-            endpoint=endpoint,
-            resource_class_args=(
-            model, related_model, property_name, serializer, self.get_db_session)
+        view_func = CollectionPropertyResource.as_view(
+            view_name, property_type, model, property_name, serializer,  self.get_db_session
         )
+        self.register_view(view_func, url_rule)
 
     def add_resource(self, *args, **kw):
         self.restful_api.add_resource(*args, **kw)
+
+    def register_view(self, view_func, url, pk='id', pk_type='int'):
+        app = self._blueprint
+        app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
+        app.add_url_rule(url, view_func=view_func, methods=['POST', ])
+        app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func,
+                         methods=['GET', 'PUT', 'DELETE']
+                         )
+
 
     @staticmethod
     def create_default_serializer(model_class):
@@ -240,10 +175,7 @@ class Api(object):
         """
         if not self._db:
             # Get the Flask application
-            if self.restful_api.blueprint_setup:
-                flask_app = self.restful_api.blueprint_setup.app
-            else:
-                flask_app = self.restful_api.app
+            flask_app = self._blueprint
             assert flask_app and flask_app.extensions, "Flask App not initialized yey"
             self._db = flask_app.extensions['sqlalchemy'].db
         return self._db.session

@@ -3,16 +3,25 @@ from datetime import datetime
 import pytest
 
 from flask_restalchemy import Api
-from flask_restalchemy.tests.sample_model import Employee, Company, Address, EmployeeSerializer
+from flask_restalchemy.serialization import ModelSerializer, Field, NestedModelField
+from flask_restalchemy.tests.sample_model import Employee, Company, Address
+
+
+class EmployeeSerializer(ModelSerializer):
+
+    password = Field(load_only=True)
+    created_at = Field(dump_only=True)
+    company_name = Field(dump_only=True)
+    address = NestedModelField(Address)
 
 
 @pytest.fixture(autouse=True)
-def sample_api(flask_app):
+def simple_api(flask_app):
     api = Api(flask_app)
     api.add_model(Company)
     api.add_model(Employee, serializer_class=EmployeeSerializer)
-    api.add_relation(Company.employees, serializer_class=EmployeeSerializer)
     return api
+
 
 @pytest.fixture(autouse=True)
 def create_test_sample(db_session):
@@ -28,34 +37,27 @@ def create_test_sample(db_session):
     db_session.add(emp2)
     db_session.commit()
 
-# noinspection PyShadowingNames
-def test_get(client):
+
+def test_get(client, data_regression):
     resp = client.get('/employee/1')
     assert resp.status_code == 200
-    expected_employee = Employee.query.get(1)
-    serialized = resp.parsed_data
-    assert serialized['firstname'] == expected_employee.firstname
-    assert serialized['lastname'] == expected_employee.lastname
-    assert serialized['created_at'] == '2000-01-02T00:00:00'
+    serialized = resp.get_json()
+    data_regression.check(serialized)
     assert 'password' not in serialized
-    assert serialized['company_id'] == expected_employee.company_id
-    assert serialized['company_name'] == Company.query.get(expected_employee.company_id).name
-    expected_address = expected_employee.address
-    assert serialized['address']['city'] == expected_address.city
-    assert serialized['address']['number'] == expected_address.number
-
     resp = client.get('/employee/10239')
     assert resp.status_code == 404
+
 
 def test_get_collection(client):
     resp = client.get('/employee')
     assert resp.status_code == 200
-    assert len(resp.parsed_data) == 2
+    assert len(resp.get_json()) == 2
     for i, expected_employee in enumerate(Employee.query.all()):
-        serialized = resp.parsed_data[i]
+        serialized = resp.get_json()[i]
         assert serialized['firstname'] == expected_employee.firstname
         assert serialized['lastname'] == expected_employee.lastname
         assert 'password' not in serialized
+
 
 def test_post(client):
     post_data = {
@@ -72,9 +74,11 @@ def test_post(client):
     assert emp3.lastname == 'Findlay'
     assert emp3.admission == datetime(2002, 2, 2)
 
+
 def test_post_default_serializer(client):
     resp = client.post('/company', data={'name': 'Mangsk Corp', })
     assert resp.status_code == 201
+
 
 def test_put(client):
     resp = client.put('/employee/1', data={'firstname': 'Jimmy'})

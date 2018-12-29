@@ -2,7 +2,7 @@ name: flask-restalchemy
 
 dependencies:
   - python>=3.4
-  - flask
+  - flask>=1.0
   - sqlalchemy>=1.1
   - sqlalchemy-utils>=0.30
   - flask-restful>=0.3.0

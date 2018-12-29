@@ -4,8 +4,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, select, Table
 from sqlalchemy.orm import column_property, object_session
 
-from flask_restalchemy.serialization import ModelSerializer, NestedModelField, Field
-
 db = SQLAlchemy()
 Base = db.Model
 
@@ -72,11 +70,3 @@ employee_department = Table('employee_department', Base.metadata,
     Column('employee_id', Integer, ForeignKey('Employee.id')),
     Column('department_id', Integer, ForeignKey('Department.id'))
 )
-
-
-class EmployeeSerializer(ModelSerializer):
-
-    password = Field(load_only=True)
-    created_at = Field(dump_only=True)
-    company_name = Field(dump_only=True)
-    address = NestedModelField(Address)

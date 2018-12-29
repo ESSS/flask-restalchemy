@@ -8,17 +8,7 @@ from flask_restalchemy.tests.sample_model import db
 
 @pytest.fixture
 def client(flask_app, db_session):
-    from werkzeug.wrappers import BaseResponse
-
-    def response_wrapper(*args):
-        resp = BaseResponse(*args)
-        if resp.status_code in [200, 201]:
-            resp.parsed_data = json.loads(resp.data.decode('utf-8'))
-        return resp
-
-    test_client = flask_app.test_client()
-    test_client.response_wrapper = response_wrapper
-    return test_client
+    return flask_app.test_client()
 
 
 @pytest.fixture()

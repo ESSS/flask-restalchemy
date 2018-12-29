@@ -1,8 +1,8 @@
-flask
-sqlalchemy>=1.1
+flask==1.0.2
+sqlalchemy==1.2.15
 sqlalchemy_utils>=0.30
-flask-restful>=0.3.0
 flask-sqlalchemy>=2.3.0
-pytest
+pytest==4.0.2
 pytest-datadir
+pytest-regressions==1.0.5
 pytest-mock>=1.10.0

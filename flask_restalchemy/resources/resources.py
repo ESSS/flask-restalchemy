@@ -1,8 +1,8 @@
 import warnings
 from collections import defaultdict
 
-from flask import request, json
-from flask_restful import Resource
+from flask import request, json, Response, jsonify, make_response
+from flask.views import MethodView
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm.collections import InstrumentedList
 
@@ -11,7 +11,8 @@ from flask_restalchemy.serialization.modelserializer import ModelSerializer
 from .querybuilder import query_from_request
 
 
-class BaseResource(Resource):
+class BaseResource(MethodView):
+
     preprocessors = defaultdict(list, {})
     postprocessors = defaultdict(list, {})
 
@@ -26,16 +27,17 @@ class BaseResource(Resource):
 
         :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
             DB session may not be available on the resource initialization.
-
-        :param preprocessors: A dict with the lists of callable preprocessors for each API method
-
-        :param postprocessors: A dict with the lists of callable postprocessors for each API method
         """
         self._resource_model = declarative_model
         self._serializer = serializer
         self._serializer.strict = True
         assert isinstance(self._serializer, ModelSerializer), 'Invalid serializer instance: {}'.format(serializer)
         self._session_getter = session_getter
+
+    def dispatch_request(self, *args, **kwargs):
+        view_response = super().dispatch_request(*args, **kwargs)
+        data, code, header = unpack(view_response)
+        return jsonify(data), code, header
 
     def save_from_request(self, extra_attrs={}):
         session = self._session_getter()
@@ -77,23 +79,26 @@ class BaseResource(Resource):
         return self._session_getter()
 
 
-class ItemResource(BaseResource):
-    """
-    flask-restful resource class that receives receives a SQLAlchemy model class and define the API to provide GET,
-    UPDATE and DELETE over a single data identified by id
-    """
+class ModelResource(BaseResource):
 
-    def get(self, id):
-        for preprocessor in self.preprocessors[GET_ITEM]:
-            preprocessor(resource_id=id)
+    def get(self, id=None):
+        if id is not None:
+            for preprocessor in self.preprocessors[GET_ITEM]:
+                preprocessor(resource_id=id)
 
-        data = self._resource_model.query.get(id)
-        if data is None:
-            return NOT_FOUND_ERROR, 404
-        return self._serializer.dump(data)
+            data = self._resource_model.query.get(id)
+            if data is None:
+                return NOT_FOUND_ERROR, 404
+            return self._serializer.dump(data)
+        else:
+            for preprocessor in self.preprocessors[GET_COLLECTION]:
+                preprocessor()
+
+            data = query_from_request(self._resource_model, self._serializer, request)
+            return data
 
     def put(self, id):
-        request_data=load_request_data()
+        request_data = load_request_data()
 
         for preprocessor in self.preprocessors[PUT]:
             preprocessor(resource_id=id, data=request_data)
@@ -129,20 +134,6 @@ class ItemResource(BaseResource):
         session.commit()
         return '', 204
 
-
-class CollectionResource(BaseResource):
-    """
-    flask-restful resource class that receives a SQLAlchemy model class and define the API to provide LIST and
-    CREATE over data of that class
-    """
-
-    def get(self):
-        for preprocessor in self.preprocessors[GET_COLLECTION]:
-            preprocessor()
-
-        data = query_from_request(self._resource_model, self._serializer, request)
-        return data
-
     def post(self):
         document = load_request_data()
 
@@ -157,7 +148,7 @@ class CollectionResource(BaseResource):
         return saved, 201
 
 
-class CollectionRelationResource(BaseResource):
+class ToManyRelationResource(BaseResource):
     """
     flask-restful resource class that receives two SQLAlchemy models, a parent model and a child model,
     and define the API to provide LIST and CREATE over data of the child model associated with a specific
@@ -177,30 +168,39 @@ class CollectionRelationResource(BaseResource):
             DB session may not be available on the resource initialization.
         """
         resource_model = relation_property.prop.mapper.class_
-        super(CollectionRelationResource, self).__init__(resource_model, serializer, session_getter)
+        super(ToManyRelationResource, self).__init__(resource_model, serializer, session_getter)
         self._relation_property = relation_property
         self._related_model = relation_property.class_
 
-    def get(self, relation_id):
-        for preprocessor in self.preprocessors[GET_COLLECTION]:
-            preprocessor(relation_id=relation_id)
+    def get(self, relation_id, id=None):
+        if id:
+            for preprocessor in self.preprocessors[GET_ITEM]:
+                preprocessor(relation_id=relation_id, resource_id=id)
 
-        session = self._db_session()
-
-        # using options(load_only('id')) avoid unintended subquerying, as all we want is check if the element exists
-        related_obj = session.query(self._related_model).options(load_only("id")).get(relation_id)
-        if related_obj is None:
-            return NOT_FOUND_ERROR, 404
-
-        # TODO: Is there a more efficient way than using getattr?
-        relation_list_or_query = getattr(related_obj, self._relation_property.key)
-        if isinstance(relation_list_or_query, InstrumentedList) or not hasattr(relation_list_or_query, 'paginate'):
-            warnings.warn('Warnning: relationship does not support pagination nor filter. Use flask-sqlalchemy '
-                         'relationship with lazy="dynamic".')
-            collection = [self._serializer.dump(item) for item in relation_list_or_query]
+            requested_obj = self._query_related_obj(relation_id, id)
+            if not requested_obj:
+                return NOT_FOUND_ERROR, 404
+            return self._serializer.dump(requested_obj), 200
         else:
-            collection = query_from_request(self._resource_model, self._serializer, request, query=relation_list_or_query)
-        return collection
+            for preprocessor in self.preprocessors[GET_COLLECTION]:
+                preprocessor(relation_id=relation_id)
+
+            session = self._db_session()
+            # using options(load_only('id')) avoid unintended subquerying, as all we want is
+            # check if the element exists
+            related_obj = session.query(self._related_model).options(load_only("id")).get(relation_id)
+            if related_obj is None:
+                return NOT_FOUND_ERROR, 404
+
+            # TODO: Is there a more efficient way than using getattr?
+            relation_list_or_query = getattr(related_obj, self._relation_property.key)
+            if isinstance(relation_list_or_query, InstrumentedList) or not hasattr(relation_list_or_query, 'paginate'):
+                warnings.warn('Warnning: relationship does not support pagination nor filter. Use flask-sqlalchemy '
+                             'relationship with lazy="dynamic".')
+                collection = [self._serializer.dump(item) for item in relation_list_or_query]
+            else:
+                collection = query_from_request(self._resource_model, self._serializer, request, query=relation_list_or_query)
+            return collection
 
     def post(self, relation_id):
 
@@ -238,40 +238,6 @@ class CollectionRelationResource(BaseResource):
         collection.append(resource_obj)
         session.commit()
         return self._serializer.dump(resource_obj), 200
-
-
-class ItemRelationResource(BaseResource):
-    """
-    flask-restful resource class that receives two SQLAlchemy models, a parent model and a child model,
-    and define the API to provide GET, PUT and DELETE operations over data of the child model associated with a
-    specific element of the parent model.
-    """
-
-    def __init__(self, relation_property, serializer, session_getter):
-        """
-        The Base class for ORM resources
-
-        :param class declarative_model: the SQLAlchemy declarative class.
-
-        :param ModelSchema serializer: Marshmallow schema for serialization. If `None`, a default serializer will be
-            created.
-
-        :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
-            DB session may not be available on the resource initialization.
-        """
-        resource_model = relation_property.prop.mapper.class_
-        super(ItemRelationResource, self).__init__(resource_model, serializer, session_getter)
-        self._relation_property = relation_property
-        self._related_model = relation_property.class_
-
-    def get(self, relation_id, id):
-        for preprocessor in self.preprocessors[GET_ITEM]:
-            preprocessor(relation_id=relation_id, resource_id=id)
-
-        requested_obj = self._query_related_obj(relation_id, id)
-        if not requested_obj:
-            return NOT_FOUND_ERROR, 404
-        return self._serializer.dump(requested_obj), 200
 
     def put(self, relation_id, id):
         request_data = load_request_data()
@@ -330,14 +296,14 @@ class ItemRelationResource(BaseResource):
         return self._db_session.query(self._resource_model).get(id)
 
 
-class CollectionPropertyResource(CollectionRelationResource):
+class CollectionPropertyResource(ToManyRelationResource):
 
     def __init__(self, declarative_model, related_model, property_name, serializer, session_getter):
-        super(CollectionRelationResource, self).__init__(declarative_model, serializer, session_getter)
+        super(ToManyRelationResource, self).__init__(declarative_model, serializer, session_getter)
         self._related_model = related_model
         self._property_name = property_name
 
-    def get(self, relation_id):
+    def get(self, relation_id, id=None):
         for preprocessor in self.preprocessors[GET_COLLECTION]:
             preprocessor(relation_id=relation_id)
 
@@ -369,6 +335,26 @@ def load_request_data():
         return json.loads(request.data.decode('utf-8'))
     else:
         return request.form.to_dict()
+
+
+def unpack(value):
+    """Return a three tuple of data, code, and headers"""
+    if not isinstance(value, tuple):
+        return value, 200, {}
+
+    try:
+        data, code, headers = value
+        return data, code, headers
+    except ValueError:
+        pass
+
+    try:
+        data, code = value
+        return data, code, {}
+    except ValueError:
+        pass
+
+    return value, 200, {}
 
 
 NOT_FOUND_ERROR = 'Resource not found in the database!'
