@@ -19,8 +19,8 @@ class EmployeeSerializer(ModelSerializer):
 def simple_api(flask_app):
     api = Api(flask_app)
     api.add_model(Company)
+    api.add_model(Company, collection_name='alt_company')
     api.add_model(Employee, serializer_class=EmployeeSerializer)
-    return api
 
 
 @pytest.fixture(autouse=True)
@@ -48,15 +48,11 @@ def test_get(client, data_regression):
     assert resp.status_code == 404
 
 
-def test_get_collection(client):
+def test_get_collection(client, data_regression):
     resp = client.get('/employee')
     assert resp.status_code == 200
-    assert len(resp.get_json()) == 2
-    for i, expected_employee in enumerate(Employee.query.all()):
-        serialized = resp.get_json()[i]
-        assert serialized['firstname'] == expected_employee.firstname
-        assert serialized['lastname'] == expected_employee.lastname
-        assert 'password' not in serialized
+    serialized = resp.get_json()
+    data_regression.check(serialized)
 
 
 def test_post(client):
@@ -86,3 +82,9 @@ def test_put(client):
     emp3 = Employee.query.get(1)
     assert emp3.firstname == 'Jimmy'
 
+
+def test_alternative_url(client):
+    resp = client.get('/alt_company/5')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['name'] == 'Terrans'

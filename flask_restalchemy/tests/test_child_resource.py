@@ -16,22 +16,23 @@ class EmployeeSerializer(ModelSerializer):
 
 @pytest.fixture(autouse=True)
 def create_test_sample(db_session):
-    company1 = Company(id=1, name='Protoss')
-    company2 = Company(id=3, name='Terrans')
-    emp1 = Employee(id=9, firstname='Jim', lastname='Raynor', company=company2)
-    emp2 = Employee(id=3, firstname='Sarah', lastname='Kerrigan', company=company2)
+    protoss = Company(id=1, name='Protoss')
+    terrans = Company(id=3, name='Terrans')
+    raynor = Employee(id=9, firstname='Jim', lastname='Raynor', company=terrans)
+    kerrigan = Employee(id=3, firstname='Sarah', lastname='Kerrigan', company=terrans)
     dept1 = Department(name='Marines')
     dept2 = Department(name='Heroes')
-    emp1.departments.append(dept1)
-    emp1.departments.append(dept2)
+    raynor.departments.append(dept1)
+    raynor.departments.append(dept2)
 
-    db_session.add(company1)
-    db_session.add(company2)
+    db_session.add(protoss)
+    db_session.add(terrans)
     db_session.add(dept1)
     db_session.add(dept2)
-    db_session.add(emp1)
-    db_session.add(emp2)
+    db_session.add(raynor)
+    db_session.add(kerrigan)
     db_session.commit()
+
 
 @pytest.fixture(autouse=True)
 def sample_api(flask_app):
@@ -43,24 +44,76 @@ def sample_api(flask_app):
     api.add_relation(Employee.departments)
     return api
 
-def test_delete_on_relation_with_secondary(client):
-    jim = Employee.query.get(9)
-    assert jim is not None
-    assert len(jim.departments) > 0
-    dep = jim.departments[0]
 
-    sarah = Employee.query.get(3)
-    assert jim is not None
-    assert dep not in sarah.departments
+def test_get_collection(client, data_regression):
+    resp = client.get('/company/3/employees')
+    assert resp.status_code == 200
+    assert resp.is_json
+    data = resp.get_json()
+    data_regression.check(data)
 
-    resp = client.get('/employee/3/departments')
+
+def test_get_item(client, data_regression):
+    resp = client.get('/company/3/employees/3')
+    assert resp.status_code == 200
+    assert resp.is_json
+    data = resp.get_json()
+    data_regression.check(data)
+
+    assert client.get('/company/5/employees/999').status_code == 404
+
+
+def test_post_item(client):
+    post_data = {
+        'firstname': 'Tychus',
+        'lastname': 'Findlay',
+        'admission': '2002-02-02T00:00:00+0300',
+    }
+    resp = client.post('/company/3/employees', data=post_data)
+    assert resp.status_code == 201
+    assert resp.is_json
+    saved_id = resp.get_json()['id']
+
+    new_employee = Employee.query.get(saved_id)
+    assert new_employee.firstname == 'Tychus'
+    assert new_employee.company.id == 3
+
+
+def test_put_item(client):
+    resp = client.put('/company/3/employees/3', data={'lastname': 'K.'})
     assert resp.status_code == 200
 
-    resp = client.delete('/employee/3/departments/' + str(dep.id))
-    assert resp.status_code == 404
+    sarah = Employee.query.filter(Employee.firstname == "Sarah").one()
+    assert sarah.lastname == 'K.'
 
-    resp = client.delete('/employee/9/departments/'+str(dep.id))
+
+def test_delete_item(client):
+    company = Company.query.get(3)
+    assert set([emp.firstname for emp in company.employees]) == {'Jim', 'Sarah'}
+
+    resp = client.delete('/company/3/employees/9')
     assert resp.status_code == 204
+    assert [emp.firstname for emp in company.employees] == ['Sarah']
+
+    assert client.delete('/company/5/employees/999').status_code == 404
+
+
+def test_post_append_existent(client):
+    resp = client.post('/employee', data={'firstname': 'Tychus', 'lastname': 'Findlay'})
+    assert resp.status_code == 201
+    data = resp.get_json()
+    empl_id = data['id']
+    thychus = Employee.query.get(empl_id)
+    assert thychus.company_name is None
+
+    resp = client.post('/company/3/employees', data={'id': empl_id})
+    assert resp.status_code == 200
+
+    thychus = Employee.query.get(empl_id)
+    assert thychus.company_name == 'Terrans'
+
+    resp = client.post('/company/3/employees', data={'id': 1000})
+    assert resp.status_code == 404
 
 
 def test_property(client, data_regression):
@@ -96,3 +149,23 @@ def test_property_pagination(client):
     assert response.status_code == 200
     response_data = response.get_json()
     assert len(response_data.get('results')) == 10
+
+
+def test_delete_on_relation_with_secondary(client):
+    jim = Employee.query.get(9)
+    assert jim is not None
+    assert len(jim.departments) > 0
+    dep = jim.departments[0]
+
+    sarah = Employee.query.get(3)
+    assert jim is not None
+    assert dep not in sarah.departments
+
+    resp = client.get('/employee/3/departments')
+    assert resp.status_code == 200
+
+    resp = client.delete('/employee/3/departments/' + str(dep.id))
+    assert resp.status_code == 404
+
+    resp = client.delete('/employee/9/departments/'+str(dep.id))
+    assert resp.status_code == 204

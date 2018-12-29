@@ -16,3 +16,6 @@ def blueprint(flask_app):
 def test_blueprint_api(client):
     resp = client.post('/bp/company', data={'name': 'Mangsk Corp'})
     assert resp.status_code == 201
+
+    resp = client.post('/bp/company', data={'name': 'Mangsk Corp'})
+    assert resp.status_code == 201
