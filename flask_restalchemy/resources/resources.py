@@ -16,7 +16,7 @@ class BaseResource(MethodView):
     preprocessors = defaultdict(list, {})
     postprocessors = defaultdict(list, {})
 
-    def __init__(self, declarative_model, serializer, session_getter):
+    def __init__(self, declarative_model, serializer, session_getter, request_decorators=None):
         """
         The Base class for ORM resources
 
@@ -33,6 +33,9 @@ class BaseResource(MethodView):
         self._serializer.strict = True
         assert isinstance(self._serializer, ModelSerializer), 'Invalid serializer instance: {}'.format(serializer)
         self._session_getter = session_getter
+        if request_decorators:
+            for decorator in request_decorators:
+                self.dispatch_request = decorator(self.dispatch_request)
 
     def dispatch_request(self, *args, **kwargs):
         view_response = super().dispatch_request(*args, **kwargs)
@@ -185,7 +188,7 @@ class ToManyRelationResource(BaseResource):
             for preprocessor in self.preprocessors[GET_COLLECTION]:
                 preprocessor(relation_id=relation_id)
 
-            session = self._db_session()
+            session = self._db_session
             # using options(load_only('id')) avoid unintended subquerying, as all we want is
             # check if the element exists
             related_obj = session.query(self._related_model).options(load_only("id")).get(relation_id)
@@ -204,7 +207,7 @@ class ToManyRelationResource(BaseResource):
 
     def post(self, relation_id):
 
-        session = self._db_session()
+        session = self._db_session
         related_obj = session.query(self._related_model).get(relation_id)
         if not related_obj:
             return NOT_FOUND_ERROR, 404
@@ -263,7 +266,7 @@ class ToManyRelationResource(BaseResource):
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
-        session = self._db_session()
+        session = self._db_session
         session.delete(requested_obj)
         was_deleted = len(session.deleted) > 0
         session.flush()
@@ -307,7 +310,7 @@ class CollectionPropertyResource(ToManyRelationResource):
         for preprocessor in self.preprocessors[GET_COLLECTION]:
             preprocessor(relation_id=relation_id)
 
-        session = self._db_session()
+        session = self._db_session
         related_obj = session.query(self._related_model).get(relation_id)
         if related_obj is None:
             return NOT_FOUND_ERROR, 404

@@ -1,3 +1,5 @@
+from flask import current_app
+
 from flask_restalchemy.resources import ToManyRelationResource, ModelResource, \
     CollectionPropertyResource
 from flask_restalchemy.serialization import ColumnSerializer
@@ -22,33 +24,30 @@ class Api(object):
         self.default_mediatype = 'application/json'
         self._blueprint = blueprint
         self._db = None
+        self._api_request_decorators = request_decorators or []
 
     def init_app(self, blueprint):
         self._blueprint = blueprint
 
-    def add_model(self, model, url=None, serializer_class=None, request_decorators=None,
-                  collection_decorators=None, collection_name=None, preprocessors=None, postprocessors=None):
+    def add_model(self, model, url=None, serializer_class=None, collection_name=None,
+                  request_decorators=None):
         """
         Create API endpoints for the given SQLAlchemy declarative class.
 
-
         :param class model: the SQLAlchemy declarative class
 
-        :param string url: one or more url routes to match for the resource, standard
-             flask routing rules apply. Defaults to model name in lower case.
+        :param string url: one or more url routes to match for the resource, standard flask routing
+            rules apply. Defaults to model name in lower case.
 
-        :param string collection_name: custom name for the collection endpoint url definition, if not set the model
-            table name will be used
+        :param string collection_name: custom name for the collection endpoint url definition, if
+            not set the model table name will be used
 
-        :param Type[ModelSerializer] serializer_class: If `None`, a default serializer will be created.
+        :param Type[ModelSerializer] serializer_class: If `None`, a default serializer will be
+            created.
 
-        :param list|dict request_decorators: decorators to be applied to HTTP methods. Could be a list of decorators
-            or a dict mapping HTTP method types to a list of decorators (dict keys should be 'get', 'post' or 'put').
-            See https://flask-restful.readthedocs.io/en/latest/extending.html#resource-method-decorators for more
-            details.
-
-        :param list|dict collection_decorators: decorators to be applied to HTTP methods for collections. It defaults to
-            request_decorators value.
+        :param list|dict request_decorators: decorators to be applied to HTTP methods. Could be a
+            list of decorators or a dict mapping HTTP method types to a list of decorators (dict
+            keys should be 'get', 'post' or 'put').
 
         :param preprocessors: A dict with the lists of callable preprocessors for each API method
 
@@ -62,11 +61,11 @@ class Api(object):
         url = url or '/' + collection_name.lower()
 
         if not request_decorators:
-            request_decorators = []
-        if not collection_decorators:
-            collection_decorators = request_decorators
-
-        view_func = ModelResource.as_view(collection_name, model, serializer, self.get_db_session)
+            request_decorators = self._api_request_decorators
+        else:
+            request_decorators = self._api_request_decorators + request_decorators
+        view_init_args = (model, serializer, self.get_db_session, request_decorators)
+        view_func = ModelResource.as_view(collection_name, *view_init_args)
         self.register_view(view_func, url)
 
     def add_relation(self, relation_property, url_rule=None, serializer_class=None,
@@ -115,9 +114,8 @@ class Api(object):
         if not collection_decorators:
             collection_decorators = request_decorators
 
-        view_func = ToManyRelationResource.as_view(
-            view_name, relation_property, serializer, self.get_db_session
-        )
+        view_func = ToManyRelationResource.as_view(view_name, relation_property, serializer,
+            self.get_db_session)
         self.register_view(view_func, url_rule)
 
     def add_property(self, property_type, model, property_name, url_rule=None,
@@ -136,9 +134,8 @@ class Api(object):
 
         endpoint = endpoint_name or url_rule
 
-        view_func = CollectionPropertyResource.as_view(
-            view_name, property_type, model, property_name, serializer,  self.get_db_session
-        )
+        view_func = CollectionPropertyResource.as_view(view_name, property_type, model,
+            property_name, serializer, self.get_db_session)
         self.register_view(view_func, url_rule)
 
     def add_resource(self, *args, **kw):
@@ -149,9 +146,7 @@ class Api(object):
         app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
         app.add_url_rule(url, view_func=view_func, methods=['POST', ])
         app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func,
-                         methods=['GET', 'PUT', 'DELETE']
-                         )
-
+            methods=['GET', 'PUT', 'DELETE'])
 
     @staticmethod
     def create_default_serializer(model_class):
@@ -166,6 +161,7 @@ class Api(object):
         from flask_restalchemy.serialization.modelserializer import ModelSerializer
         return ModelSerializer(model_class)
 
+    @property
     def get_db_session(self):
         """
         Returns an SQLAlchemy object session. Used by flask-restful Resources to access
@@ -173,15 +169,12 @@ class Api(object):
         """
         if not self._db:
             # Get the Flask application
-            flask_app = self._blueprint
-            assert flask_app and flask_app.extensions, "Flask App not initialized yey"
+            flask_app = current_app
+            assert flask_app and flask_app.extensions, "Flask App not initialized yet"
             self._db = flask_app.extensions['sqlalchemy'].db
         return self._db.session
 
-    _FIELD_SERIALIZERS = [
-        (DateTimeSerializer, is_datetime_field),
-        (EnumSerializer, is_enum_field)
-    ]
+    _FIELD_SERIALIZERS = [(DateTimeSerializer, is_datetime_field), (EnumSerializer, is_enum_field)]
 
     @classmethod
     def register_column_serializer(cls, serializer_class, predicate):
@@ -195,7 +188,6 @@ class Api(object):
         if not issubclass(serializer_class, ColumnSerializer):
             raise TypeError('Invalid serializer class')
         cls._FIELD_SERIALIZERS.append((serializer_class, predicate))
-
 
     @classmethod
     def find_column_serializer(cls, column):

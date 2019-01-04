@@ -4,9 +4,9 @@ import pytest
 
 from flask_restalchemy import Api
 from flask_restalchemy.resources.processors import GET_ITEM, GET_COLLECTION, POST, PUT, DELETE
-from flask_restalchemy.tests.sample_model import Employee, Company, Address, EmployeeSerializer
+from flask_restalchemy.tests.sample_model import Employee, Company, Address
 
-employee_serializer = EmployeeSerializer(Employee)
+# employee_serializer = EmployeeSerializer(Employee)
 
 @pytest.fixture
 def sample_api(flask_app):
@@ -27,7 +27,7 @@ def create_test_sample(db_session):
 
 def test_get_item_preprocessor(sample_api, client, mocker):
     preprocessor = mocker.Mock(return_value=None)
-    sample_api.add_model(Employee, serializer_class=EmployeeSerializer, preprocessors={GET_ITEM: [preprocessor]})
+    sample_api.add_model(Employee, preprocessors={GET_ITEM: [preprocessor]})
 
     resp = client.get('/employee/1')
     assert resp.status_code == 200
