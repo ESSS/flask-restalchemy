@@ -164,6 +164,13 @@ class PrimaryKeyField(Field):
 
 
 def get_pk_attr_name(declarative_model):
+    """
+    Get the primary key attribute name from a Declarative model class
+
+    :param Type[DeclarativeMeta] declarative_class: a Declarative class
+
+    :return: str: a Column name
+    """
     primary_keys = declarative_model.__mapper__.primary_key
     assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
     pk_name = primary_keys[0].key
