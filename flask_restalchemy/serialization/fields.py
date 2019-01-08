@@ -45,7 +45,7 @@ class NestedModelListField(Field):
 
     def load(self, serialized):
         if not serialized:
-            return None
+            return []
         class_mapper = self.serializer.model_class
         pk_attr = get_pk_attr_name(class_mapper)
         models = []
