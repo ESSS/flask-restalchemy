@@ -5,6 +5,7 @@ from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, select, Ta
 from sqlalchemy.orm import column_property, object_session
 
 from flask_restalchemy.serialization import ModelSerializer, NestedModelField, Field
+from flask_restalchemy.serialization.fields import NestedModelListField
 
 db = SQLAlchemy()
 Base = db.Model
@@ -42,6 +43,25 @@ class Address(Base):
     state = Column(String)
 
 
+class ContactType(Base):
+
+    __tablename__ = 'ContactType'
+
+    id = Column(Integer, primary_key=True)
+    label = Column(String(15))
+
+
+class Contact(Base):
+
+    __tablename__ = 'Contact'
+
+    id = Column(Integer, primary_key=True)
+    type = relationship(ContactType)
+    type_id = Column(ForeignKey('ContactType.id'))
+    value = Column(String)
+    employee_id = Column(ForeignKey('Employee.id'))
+
+
 class Employee(Base):
 
     __tablename__ = 'Employee'
@@ -59,6 +79,7 @@ class Employee(Base):
     address_id = Column(ForeignKey('Address.id'))
     address = relationship(Address)
     departments = relationship('Department', secondary='employee_department')
+    contacts = relationship(Contact, cascade='all, delete-orphan')
 
     password = Column(String)
     created_at = Column(DateTime, default=datetime(2000, 1, 2))
@@ -80,3 +101,4 @@ class EmployeeSerializer(ModelSerializer):
     created_at = Field(dump_only=True)
     company_name = Field(dump_only=True)
     address = NestedModelField(Address)
+    contacts = NestedModelListField(Contact)

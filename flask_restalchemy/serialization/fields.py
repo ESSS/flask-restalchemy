@@ -31,6 +31,45 @@ class Field(object):
             return serialized
 
 
+class NestedModelListField(Field):
+    """
+    A field to Dump and Update nested model list.
+    """
+
+    def __init__(self, declarative_class, **kw):
+        from .modelserializer import ModelSerializer
+
+        super().__init__(**kw)
+        if self._serializer is None:
+            self._serializer = ModelSerializer(declarative_class)
+
+    def load(self, serialized):
+        if not serialized:
+            return []
+        class_mapper = self.serializer.model_class
+        pk_attr = get_pk_attr_name(class_mapper)
+        models = []
+        for item in serialized:
+            pk = item.get(pk_attr)
+            if pk:
+                # Serialized object has a primary key, so we load an existing model from the database
+                # instead of creating one
+                existing_model = class_mapper.query.get(pk)
+                updated_model = self.serializer.load(item, existing_model)
+                models.append(updated_model)
+            else:
+                # No primary key, just create a new model entity
+                model = self.serializer.load(item)
+                models.append(model)
+        return models
+
+    def dump(self, value):
+        if value and self.serializer:
+            return [self.serializer.dump(item) for item in value]
+        else:
+            return value
+
+
 class NestedModelField(Field):
     """
     A field to Dump and Update nested models.
@@ -47,7 +86,7 @@ class NestedModelField(Field):
         if not serialized:
             return None
         class_mapper = self.serializer.model_class
-        pk_attr = self._get_pk_attr_name(class_mapper)
+        pk_attr = get_pk_attr_name(class_mapper)
         pk = serialized.get(pk_attr)
         if pk:
             # Serialized object has a primary key, so we load an existing model from the database
@@ -57,13 +96,6 @@ class NestedModelField(Field):
         else:
             # No primary key, just create a new model entity
             return self.serializer.load(serialized)
-
-    @staticmethod
-    def _get_pk_attr_name(declarative_model):
-        primary_keys = declarative_model.__mapper__.primary_key
-        assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
-        pk_name = primary_keys[0].key
-        return pk_name
 
 
 class NestedAttributesField(Field):
@@ -129,6 +161,20 @@ class PrimaryKeyField(Field):
 
     def __init__(self, declarative_class, **kw):
         super().__init__(serializer=self.PrimaryKeySerializer(declarative_class), **kw)
+
+
+def get_pk_attr_name(declarative_model):
+    """
+    Get the primary key attribute name from a Declarative model class
+
+    :param Type[DeclarativeMeta] declarative_class: a Declarative class
+
+    :return: str: a Column name
+    """
+    primary_keys = declarative_model.__mapper__.primary_key
+    assert len(primary_keys) == 1, "Nested object must have exactly one primary key"
+    pk_name = primary_keys[0].key
+    return pk_name
 
 
 def get_model_pk(declarative_class):
