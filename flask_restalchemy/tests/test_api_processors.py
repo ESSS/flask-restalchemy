@@ -1,16 +1,19 @@
 import json
+from unittest.mock import call
 
 import pytest
+from flask import Response
 
 from flask_restalchemy import Api
+from flask_restalchemy.decorators.request_hooks import before_request, after_request
 from flask_restalchemy.resources.processors import GET_ITEM, GET_COLLECTION, POST, PUT, DELETE
 from flask_restalchemy.tests.sample_model import Employee, Company, Address
 
-# employee_serializer = EmployeeSerializer(Employee)
 
 @pytest.fixture
 def sample_api(flask_app):
     return Api(flask_app)
+
 
 @pytest.fixture(autouse=True)
 def create_test_sample(db_session):
@@ -25,30 +28,49 @@ def create_test_sample(db_session):
     db_session.commit()
 
 
-def test_get_item_preprocessor(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    sample_api.add_model(Employee, preprocessors={GET_ITEM: [preprocessor]})
+@pytest.mark.parametrize("decorator_verb", ["all", "get"])
+def test_get_item_preprocessor(sample_api, client, mocker, decorator_verb):
+    pre_processor_mock = mocker.Mock(return_value=None)
+    decorator_kw = {decorator_verb: pre_processor_mock}
+    sample_api.add_model(Employee, request_decorators=[before_request(**decorator_kw)])
 
     resp = client.get('/employee/1')
     assert resp.status_code == 200
-    preprocessor.assert_called_once_with(resource_id='1')
+    pre_processor_mock.assert_called_once_with(id=1)
+    resp = client.post('/employee', data=json.dumps({'firstname': 'Jeff'}))
+    assert resp.status_code == 201
+    # 2 calls if all verbs were decorated, otherwise test only for GET call
+    assert pre_processor_mock.call_count == 2 if decorator_verb == "all" else 1
 
 
 def test_get_collection_preprocessor(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    sample_api.add_model(Employee, serializer_class=EmployeeSerializer, preprocessors={GET_COLLECTION: [preprocessor]})
+    pre_processor_mock = mocker.Mock(return_value=None)
+    sample_api.add_model(Employee, request_decorators=[before_request(pre_processor_mock)])
 
     resp = client.get('/employee')
     assert resp.status_code == 200
-    preprocessor.assert_called_once_with()
+    assert pre_processor_mock.call_args == call(id=None)
+
+    resp = client.post('/employee', data=json.dumps({'firstname': 'Jeff'}))
+    assert resp.status_code == 201
+    assert pre_processor_mock.call_args == call()
+
+    resp = client.put('/employee/1', data=json.dumps({'lastname': 'R.'}))
+    assert resp.status_code == 200
+    assert pre_processor_mock.call_args == call(id=1)
+
+    assert pre_processor_mock.call_count == 3
 
 
 def test_post_processors(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    postprocessor = mocker.Mock(return_value=None)
-    sample_api.add_model(Employee, serializer_class=EmployeeSerializer,
-                         preprocessors={POST: [preprocessor]},
-                         postprocessors={POST: [postprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    post_mock = mocker.Mock(return_value=None)
+    sample_api.add_model(
+        Employee,
+        request_decorators=[
+            before_request(post=pre_mock),
+            after_request(post_mock)
+        ])
 
     data = {
         'firstname': 'Ana',
@@ -56,19 +78,26 @@ def test_post_processors(sample_api, client, mocker):
     }
     resp = client.post('/employee', data=json.dumps(data))
     assert resp.status_code == 201
-    preprocessor.assert_called_once_with(data=data)
-    employee_id = resp.parsed_data['id']
+    assert pre_mock.call_count == 1
+
+    employee_id = resp.get_json()['id']
     assert employee_id
-    employee = Employee.query.get(employee_id)
-    postprocessor.assert_called_once_with(result=employee_serializer.dump(employee))
+    assert post_mock.call_count == 1
+    post_mock_args = post_mock.call_args[0]
+    assert post_mock_args[0][1] == 201
+    assert post_mock_args[0][0].data == resp.data
 
 
 def test_put_preprocessors(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    postprocessor = mocker.Mock(return_value=None)
-    sample_api.add_model(Employee, serializer_class=EmployeeSerializer,
-                         preprocessors={PUT: [preprocessor]},
-                         postprocessors={PUT: [postprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    post_mock = mocker.Mock(return_value=None)
+    sample_api.add_model(
+        Employee,
+        request_decorators=[
+            before_request(put=pre_mock),
+            after_request(put=post_mock)
+        ]
+    )
 
     data = {
         'firstname': 'Ana',
@@ -76,59 +105,67 @@ def test_put_preprocessors(sample_api, client, mocker):
     }
     resp = client.put('/employee/1', data=json.dumps(data))
     assert resp.status_code == 200
-    preprocessor.assert_called_once_with(resource_id='1', data=data)
+    assert pre_mock.call_count == 1
+    assert pre_mock.call_args == call(id=1)
 
-    employee = Employee.query.get(1)
-    postprocessor.assert_called_once_with(result=employee_serializer.dump(employee))
+    assert post_mock.call_count == 1
 
 
 def test_delete_preprocessors(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    postprocessor = mocker.Mock(return_value=None)
-    sample_api.add_model(Employee, serializer_class=EmployeeSerializer,
-                         preprocessors={DELETE: [preprocessor]},
-                         postprocessors={DELETE: [postprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    post_mock = mocker.Mock(return_value=None)
+    sample_api.add_model(
+        Employee,
+        request_decorators=[
+            before_request(delete=pre_mock),
+            after_request(delete=post_mock),
+        ]
+     )
 
     resp = client.delete('/employee/1')
     assert resp.status_code == 204
-    preprocessor.assert_called_once_with(resource_id='1')
-    postprocessor.assert_called_once_with(was_deleted=True)
+    assert pre_mock.call_args == call(id=1)
+    assert post_mock.call_args == call(None, id=1)
 
 
 def test_property_get_collection_processor(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    sample_api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer,
-                            preprocessors={GET_COLLECTION: [preprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    sample_api.add_property(
+        Employee, Employee, 'colleagues', request_decorators=[before_request(get=pre_mock)])
     
     resp = client.get('/employee/1/colleagues')
     assert resp.status_code == 200
-    preprocessor.assert_called_once_with(relation_id='1')
+    pre_mock.assert_called_once_with(id=None, relation_id=1)
 
 
 def test_relation_get_item_preprocessor(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    sample_api.add_relation(Company.employees, serializer_class=EmployeeSerializer, preprocessors={GET_ITEM: [preprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    sample_api.add_relation(Company.employees, request_decorators=[before_request(get=pre_mock)])
 
     resp = client.get('/company/5/employees/1')
     assert resp.status_code == 200
-    preprocessor.assert_called_once_with(relation_id='5', resource_id='1')
+    pre_mock.assert_called_once_with(relation_id=5, id=1)
 
 
 def test_relation_get_collection_preprocessor(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    sample_api.add_relation(Company.employees, serializer_class=EmployeeSerializer, preprocessors={GET_COLLECTION: [preprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    sample_api.add_relation(Company.employees, request_decorators=[before_request(get=pre_mock)])
 
     resp = client.get('/company/5/employees')
     assert resp.status_code == 200
-    preprocessor.assert_called_once_with(relation_id='5')
+    pre_mock.assert_called_once_with(relation_id=5, id=None)
 
 
 def test_relation_post_processors(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    postprocessor = mocker.Mock(return_value=None)
-    sample_api.add_relation(Company.employees, serializer_class=EmployeeSerializer,
-                         preprocessors={POST: [preprocessor]},
-                         postprocessors={POST: [postprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    post_mock = mocker.Mock(return_value=None)
+    sample_api.add_relation(
+        Company.employees,
+        request_decorators=[
+            before_request(post=pre_mock),
+            after_request(post=post_mock)
+        ]
+    )
 
     data = {
         'firstname': 'Ana',
@@ -136,19 +173,20 @@ def test_relation_post_processors(sample_api, client, mocker):
     }
     resp = client.post('/company/5/employees', data=json.dumps(data))
     assert resp.status_code == 201
-    preprocessor.assert_called_once_with(relation_id='5', data=data)
-    employee_id = resp.parsed_data['id']
-    assert employee_id
-    employee = Employee.query.get(employee_id)
-    postprocessor.assert_called_once_with(result=employee_serializer.dump(employee))
+    pre_mock.assert_called_once_with(relation_id=5)
+    post_mock.assert_called_once_with(relation_id=5)
 
 
 def test_relation_put_preprocessors(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    postprocessor = mocker.Mock(return_value=None)
-    sample_api.add_relation(Company.employees, serializer_class=EmployeeSerializer,
-                         preprocessors={PUT: [preprocessor]},
-                         postprocessors={PUT: [postprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    post_mock = mocker.Mock(return_value=None)
+    sample_api.add_relation(
+        Company.employees,
+        request_decorators=[
+            before_request(put=pre_mock),
+            after_request(put=post_mock)
+        ]
+    )
 
     data = {
         'firstname': 'Ana',
@@ -156,20 +194,22 @@ def test_relation_put_preprocessors(sample_api, client, mocker):
     }
     resp = client.put('/company/5/employees/1', data=json.dumps(data))
     assert resp.status_code == 200
-    preprocessor.assert_called_once_with(relation_id='5', resource_id='1', data=data)
-
-    employee = Employee.query.get(1)
-    postprocessor.assert_called_once_with(result=employee_serializer.dump(employee))
+    pre_mock.assert_called_once_with(relation_id=5, id=1)
+    post_mock.assert_called_once_with(None, relation_id=5, id=1)
 
 
 def test_relation_delete_preprocessors(sample_api, client, mocker):
-    preprocessor = mocker.Mock(return_value=None)
-    postprocessor = mocker.Mock(return_value=None)
-    sample_api.add_relation(Company.employees, serializer_class=EmployeeSerializer,
-                         preprocessors={DELETE: [preprocessor]},
-                         postprocessors={DELETE: [postprocessor]})
+    pre_mock = mocker.Mock(return_value=None)
+    post_mock = mocker.Mock(return_value=None)
+    sample_api.add_relation(
+        Company.employees,
+        request_decorators=[
+            before_request(delete=pre_mock),
+            after_request(delete=post_mock)
+        ]
+    )
 
     resp = client.delete('/company/5/employees/1')
     assert resp.status_code == 204
-    preprocessor.assert_called_once_with(relation_id='5', resource_id='1')
-    postprocessor.assert_called_once_with(was_deleted=True)
+    pre_mock.assert_called_once_with(relation_id=5, id=1)
+    post_mock.assert_called_once_with(None, relation_id=5, id=1)

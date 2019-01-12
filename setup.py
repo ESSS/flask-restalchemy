@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 install_requires=[
     'flask-sqlalchemy >= 2.3.0',
-    'flask',
+    'flask>=1.0.0',
     'sqlalchemy>=1.1',
 ]
 

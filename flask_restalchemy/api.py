@@ -69,8 +69,7 @@ class Api(object):
         self.register_view(view_func, url)
 
     def add_relation(self, relation_property, url_rule=None, serializer_class=None,
-                     request_decorators=None, collection_decorators=None, endpoint_name=None,
-                     preprocessors=None, postprocessors=None):
+                     request_decorators=None, endpoint_name=None):
         """
         Create API endpoints for the given SQLAlchemy relationship.
 
@@ -103,39 +102,38 @@ class Api(object):
         else:
             serializer = serializer_class(model)
         if url_rule:
-            assert '<relation_id>' in url_rule
+            assert '<int:relation_id>' in url_rule
         else:
             parent_endpoint = related_model.__tablename__.lower()
-            url_rule = '/{}/<relation_id>/{}'.format(parent_endpoint, relation_property.key)
+            url_rule = '/{}/<int:relation_id>/{}'.format(parent_endpoint, relation_property.key)
         endpoint_name = endpoint_name or url_rule
 
         if not request_decorators:
-            request_decorators = []
-        if not collection_decorators:
-            collection_decorators = request_decorators
-
-        view_func = ToManyRelationResource.as_view(view_name, relation_property, serializer,
-            self.get_db_session)
+            request_decorators = self._api_request_decorators
+        else:
+            request_decorators = self._api_request_decorators + request_decorators
+        view_init_args = (relation_property, serializer, self.get_db_session, request_decorators)
+        view_func = ToManyRelationResource.as_view(view_name, *view_init_args)
         self.register_view(view_func, url_rule)
 
     def add_property(self, property_type, model, property_name, url_rule=None,
-                     serializer_class=None, request_decorators=[], endpoint_name=None,
-                     preprocessors=None, postprocessors=None):
+                     serializer_class=None, request_decorators=[], endpoint_name=None):
         if not serializer_class:
             serializer = self.create_default_serializer(property_type)
         else:
             serializer = serializer_class(property_type)
         view_name = "{}.{}".format(model.__tablename__, property_name).lower()
         if url_rule:
-            assert '<relation_id>' in url_rule
+            assert '<int:relation_id>' in url_rule
         else:
             parent_endpoint = (model.__tablename__.lower())
-            url_rule = '/{}/<relation_id>/{}'.format(parent_endpoint, property_name.lower())
+            url_rule = '/{}/<int:relation_id>/{}'.format(parent_endpoint, property_name.lower())
 
         endpoint = endpoint_name or url_rule
 
-        view_func = CollectionPropertyResource.as_view(view_name, property_type, model,
-            property_name, serializer, self.get_db_session)
+        view_init_args = (property_type, model, property_name, serializer, self.get_db_session,
+                          request_decorators)
+        view_func = CollectionPropertyResource.as_view(view_name, *view_init_args)
         self.register_view(view_func, url_rule)
 
     def add_resource(self, *args, **kw):
