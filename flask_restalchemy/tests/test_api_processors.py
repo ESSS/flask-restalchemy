@@ -174,7 +174,7 @@ def test_relation_post_processors(sample_api, client, mocker):
     resp = client.post('/company/5/employees', data=json.dumps(data))
     assert resp.status_code == 201
     pre_mock.assert_called_once_with(relation_id=5)
-    post_mock.assert_called_once_with(relation_id=5)
+    post_mock.assert_called_once_with(None, relation_id=5)
 
 
 def test_relation_put_preprocessors(sample_api, client, mocker):
