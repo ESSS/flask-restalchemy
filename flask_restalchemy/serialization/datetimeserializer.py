@@ -10,10 +10,10 @@ class DateTimeSerializer(ColumnSerializer):
     Serializer for DateTime objects
     """
 
-    DATETIME_REGEX = "(?P<Y>\d{2,4})-(?P<m>\d{2})-(?P<d>\d{2})" + \
-                     "[T ]" + \
-                     "(?P<H>\d{2}):(?P<M>\d{2})(:(?P<S>\d{2}))?(\.(?P<f>\d+))?" + \
-                     "(?P<tz>([\+-]\d{2}:?\d{2})|[Zz])?"
+    DATETIME_REGEX = r"(?P<Y>\d{2,4})-(?P<m>\d{2})-(?P<d>\d{2})" + \
+                     r"[T ]" + \
+                     r"(?P<H>\d{2}):(?P<M>\d{2})(:(?P<S>\d{2}))?(\.(?P<f>\d+))?" + \
+                     r"(?P<tz>([\+-]\d{2}:?\d{2})|[Zz])?"
 
     DATETIME_RE = re.compile(DATETIME_REGEX)
 

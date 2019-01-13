@@ -1,9 +1,9 @@
 # Byte-compiled / optimized / DLL files
+*.py[cod]
 __pycache__/
 .*cache
 *.egg-info
 .~*
-*.py[cod]
 *$py.class
 build/
 dist/
@@ -15,3 +15,7 @@ environment.yml
 
 # Rever
 rever/
+
+.tox/
+.coverage
+.coverage.*

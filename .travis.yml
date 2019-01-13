@@ -1,11 +1,32 @@
 language: python
-python:
-  - 3.6
-  - 3.5
+
+stages:
+- test
+- name: deploy
+  if: repo = ESSS/flask-restalchemy AND tag IS present
 
 install:
-  - pip install -r requirements.txt
+- pip install -U pip
+- pip install -U tox
 
 script:
-  - py.test
+- tox
 
+jobs:
+  include:
+    - python: '3.6'
+      env: TOXENV=linting
+
+    - python: '3.6'
+      env: TOXENV=docs
+
+    - python: '3.6'
+      env: TOXENV=py36
+
+    - python: '3.5'
+      env: TOXENV=py35
+
+branches:
+  only:
+  - master
+  - "/v(\\d+\\.)*\\d/"
