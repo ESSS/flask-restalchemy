@@ -16,7 +16,9 @@ extras_require = {
 setup(
     name='flask-restalchemy',
     version='0.12.1',
-    packages=find_packages(exclude=['*.tests']),
+    packages=find_packages('src'),
+    package_dir={"": "src"},
+    package_data={"": ['**/*.yml']},
     url='https://github.com/ESSS/flask-restalchemy',
     license='MIT',
     author='ESSS',
