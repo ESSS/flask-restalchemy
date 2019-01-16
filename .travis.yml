@@ -2,8 +2,6 @@ language: python
 
 stages:
 - test
-- name: deploy
-  if: repo = ESSS/flask-restalchemy AND tag IS present
 
 install:
 - pip install -U pip
