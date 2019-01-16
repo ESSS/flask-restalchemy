@@ -14,4 +14,4 @@ dependencies:
 
 environment:
   PYTHONPATH:
-    - {{ root }}
+    - {{ root }}/src
