@@ -9,7 +9,7 @@ install_requires=[
 ]
 
 extras_require = {
-    "docs": ["sphinx >= 1.4", "sphinx_rtd_theme", "sphinx-autodoc-typehints"],
+    "docs": ["sphinx >= 1.4", "sphinx_rtd_theme"],
     "testing": ["codecov", "pytest", "pytest-cov", "pytest-mock", "pytest-datadir", "tox"],
 }
 
