@@ -10,6 +10,7 @@ dependencies:
   - pytest
   - pytest-datadir
   - pytest-mock>=1.10.0
+  - tox
 
 
 environment:
