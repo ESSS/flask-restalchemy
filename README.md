@@ -1,6 +1,8 @@
 # Flask-RESTAlchemy #
 
-![travis-ci](https://api.travis-ci.org/ESSS/flask-restalchemy.svg?branch=master)
+[![travis-ci](https://api.travis-ci.org/ESSS/flask-restalchemy.svg?branch=master)](https://travis-ci.org/ESSS/flask-restalchemy)
+[![codecov](https://codecov.io/gh/ESSS/flask-restalchemy/branch/master/graph/badge.svg)](https://codecov.io/gh/ESSS/flask-restalchemy)
+
 
 A Flask extension to build REST APIs. It dismiss the need of building *Schema* classes, 
 since usually all the information needed to serialize an SQLAlchemy instance is in the model
