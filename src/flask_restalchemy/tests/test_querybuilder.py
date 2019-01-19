@@ -79,7 +79,7 @@ def test_filter(client):
     data_list = response.get_json()
     assert len(data_list) == 2
 
-    with pytest.raises(ValueError, message='Unknown operator unknown_operator'):
+    with pytest.raises(ValueError, match='Unknown operator unknown_operator'):
         client.get('/company?filter={}'.format(json.dumps({"name": {"unknown_operator": 'Terr'}})))
 
 

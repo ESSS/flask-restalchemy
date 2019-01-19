@@ -8,14 +8,16 @@ install_requires=[
 ]
 
 extras_require = {
-    "docs": ["sphinx >= 1.4", "sphinx_rtd_theme", "sphinx-autodoc-typehints"],
+    "docs": ["sphinx >= 1.4", "sphinx_rtd_theme"],
     "testing": ["codecov", "pytest", "pytest-cov", "pytest-mock", "pytest-regressions", "tox"],
 }
 
 setup(
     name='flask-restalchemy',
     version='0.12.1',
-    packages=find_packages(exclude=['*.tests']),
+    packages=find_packages('src'),
+    package_dir={"": "src"},
+    package_data={"": ['**/*.yml']},
     url='https://github.com/ESSS/flask-restalchemy',
     license='MIT',
     author='ESSS',
