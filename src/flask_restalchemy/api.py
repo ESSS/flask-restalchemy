@@ -21,6 +21,7 @@ class Api(object):
         :param callable request_decorators: request decorators for this API object (see
             Flask-Restful decorators docs for more information)
         """
+        # noinspection PyPackageRequirements
         self.default_mediatype = 'application/json'
         self._blueprint = blueprint
         self._db = None

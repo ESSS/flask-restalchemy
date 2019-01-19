@@ -1,6 +1,5 @@
 import pytest
 
-from flask_restalchemy.resourcefactory import item_resource_factory, collection_resource_factory
 from flask_restalchemy.tests.sample_model import Employee
 
 
