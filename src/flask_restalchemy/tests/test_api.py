@@ -22,7 +22,7 @@ class EmployeeSerializer(ModelSerializer):
 def sample_api(flask_app):
     api = Api(flask_app)
     api.add_model(Company)
-    api.add_model(Company, collection_name='alt_company')
+    api.add_model(Company, view_name='alt_company')
     api.add_model(Employee, serializer_class=EmployeeSerializer)
 
 

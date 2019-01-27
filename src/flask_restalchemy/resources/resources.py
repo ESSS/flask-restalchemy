@@ -11,32 +11,46 @@ from .querybuilder import query_from_request
 
 class BaseResource(MethodView):
 
+    def __init__(self, request_decorators=None):
+        if not request_decorators:
+            return
+        for verb, decorator_list in request_decorators.items():
+            for decorator in decorator_list:
+                if verb == 'ALL':
+                    self.dispatch_request = decorator(self.dispatch_request)
+                else:
+                    verb_method_name = verb.lower()
+                    decorated_method = decorator(getattr(self, verb_method_name))
+                    setattr(self, verb_method_name, decorated_method)
+
+    def dispatch_request(self, *args, **kwargs):
+        view_response = super().dispatch_request(*args, **kwargs)
+        data, code, header = unpack(view_response)
+        return jsonify(data), code, header
+
+
+class BaseModelResource(BaseResource):
+
     def __init__(self, declarative_model, serializer, session_getter, request_decorators=None):
         """
         The Base class for ORM resources
 
         :param class declarative_model: the SQLAlchemy declarative class.
 
-        :param ModelSchema serializer: Marshmallow schema for serialization. If `None`, a default serializer will be
-            created.
+        :param ModelSerializer serializer: schema for serialization. If `None`, a default serializer will be created.
 
         :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
             DB session may not be available on the resource initialization.
+
+        :param dict|list request_decorators: a list of decorators
         """
+        super().__init__(request_decorators)
         self._resource_model = declarative_model
         self._serializer = serializer
         self._serializer.strict = True
         assert isinstance(self._serializer,
                           ModelSerializer), 'Invalid serializer instance: {}'.format(serializer)
         self._session_getter = session_getter
-        if request_decorators:
-            for decorator in request_decorators:
-                self.dispatch_request = decorator(self.dispatch_request)
-
-    def dispatch_request(self, *args, **kwargs):
-        view_response = super().dispatch_request(*args, **kwargs)
-        data, code, header = unpack(view_response)
-        return jsonify(data), code, header
 
     def save_from_request(self, extra_attrs={}):
         session = self._session_getter()
@@ -78,7 +92,7 @@ class BaseResource(MethodView):
         return self._session_getter()
 
 
-class ModelResource(BaseResource):
+class ModelResource(BaseModelResource):
 
     def get(self, id=None):
         if id is not None:
@@ -118,7 +132,7 @@ class ModelResource(BaseResource):
         return saved, 201
 
 
-class ToManyRelationResource(BaseResource):
+class ToManyRelationResource(BaseModelResource):
     """
     flask-restful resource class that receives two SQLAlchemy models, a parent model and a child model,
     and define the API to provide LIST and CREATE over data of the child model associated with a specific

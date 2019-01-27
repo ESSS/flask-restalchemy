@@ -1,7 +1,10 @@
+from collections import MutableMapping, Mapping
+
 from flask import current_app
 
 from flask_restalchemy.resources import ToManyRelationResource, ModelResource, \
     CollectionPropertyResource
+from flask_restalchemy.resources.resources import BaseResource
 from flask_restalchemy.serialization import ColumnSerializer
 from flask_restalchemy.serialization.datetimeserializer import is_datetime_field, DateTimeSerializer
 from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSerializer
@@ -25,13 +28,12 @@ class Api(object):
         self.default_mediatype = 'application/json'
         self._blueprint = blueprint
         self._db = None
-        self._api_request_decorators = request_decorators or []
+        self._api_request_decorators = ResourceDecorators(request_decorators)
 
     def init_app(self, blueprint):
         self._blueprint = blueprint
 
-    def add_model(self, model, url=None, serializer_class=None, collection_name=None,
-                  request_decorators=None):
+    def add_model(self, model, url=None, serializer_class=None, view_name=None, request_decorators=None):
         """
         Create API endpoints for the given SQLAlchemy declarative class.
 
@@ -40,7 +42,7 @@ class Api(object):
         :param string url: one or more url routes to match for the resource, standard flask routing
             rules apply. Defaults to model name in lower case.
 
-        :param string collection_name: custom name for the collection endpoint url definition, if
+        :param string view_name: custom name for the collection endpoint url definition, if
             not set the model table name will be used
 
         :param Type[ModelSerializer] serializer_class: If `None`, a default serializer will be
@@ -54,20 +56,16 @@ class Api(object):
 
         :param postprocessors: A dict with the lists of callable postprocessors for each API method
         """
-        collection_name = collection_name or model.__tablename__
+        view_name = view_name or model.__tablename__
         if not serializer_class:
             serializer = self.create_default_serializer(model)
         else:
             serializer = serializer_class(model)
-        url = url or '/' + collection_name.lower()
+        url = url or '/' + view_name.lower()
 
-        if not request_decorators:
-            request_decorators = self._api_request_decorators
-        else:
-            request_decorators = self._api_request_decorators + request_decorators
-        view_init_args = (model, serializer, self.get_db_session, request_decorators)
-        view_func = ModelResource.as_view(collection_name, *view_init_args)
-        self.register_view(view_func, url)
+        view_init_args = (model, serializer, self.get_db_session)
+        decorators = self._create_decorators(request_decorators)
+        self.add_resource(ModelResource, url, view_name, view_init_args, decorators=decorators)
 
     def add_relation(self, relation_property, url_rule=None, serializer_class=None,
                      request_decorators=None, endpoint_name=None):
@@ -96,7 +94,7 @@ class Api(object):
         """
         model = relation_property.prop.mapper.class_
         related_model = relation_property.class_
-        view_name = "{}.{}".format(model.__tablename__, related_model.__tablename__).lower()
+        view_name = "{}_{}".format(model.__name__, related_model.__name__).lower()
 
         if not serializer_class:
             serializer = self.create_default_serializer(model)
@@ -109,13 +107,14 @@ class Api(object):
             url_rule = '/{}/<int:relation_id>/{}'.format(parent_endpoint, relation_property.key)
         endpoint_name = endpoint_name or url_rule
 
-        if not request_decorators:
-            request_decorators = self._api_request_decorators
-        else:
-            request_decorators = self._api_request_decorators + request_decorators
-        view_init_args = (relation_property, serializer, self.get_db_session, request_decorators)
-        view_func = ToManyRelationResource.as_view(view_name, *view_init_args)
-        self.register_view(view_func, url_rule)
+        view_init_args = (relation_property, serializer, self.get_db_session)
+        self.add_resource(
+            ToManyRelationResource,
+            url_rule,
+            view_name,
+            view_init_args,
+            decorators=self._create_decorators(request_decorators)
+        )
 
     def add_property(self, property_type, model, property_name, url_rule=None,
                      serializer_class=None, request_decorators=[], endpoint_name=None):
@@ -123,7 +122,7 @@ class Api(object):
             serializer = self.create_default_serializer(property_type)
         else:
             serializer = serializer_class(property_type)
-        view_name = "{}.{}".format(model.__tablename__, property_name).lower()
+        view_name = "{}_{}".format(model.__name__, property_name).lower()
         if url_rule:
             assert '<int:relation_id>' in url_rule
         else:
@@ -132,20 +131,38 @@ class Api(object):
 
         endpoint = endpoint_name or url_rule
 
-        view_init_args = (property_type, model, property_name, serializer, self.get_db_session,
-                          request_decorators)
-        view_func = CollectionPropertyResource.as_view(view_name, *view_init_args)
-        self.register_view(view_func, url_rule)
+        view_init_args = (property_type, model, property_name, serializer, self.get_db_session)
+        self.add_resource(
+            CollectionPropertyResource,
+            url_rule,
+            view_name,
+            view_init_args,
+            decorators=self._create_decorators(request_decorators)
+        )
 
-    def add_resource(self, *args, **kw):
-        self.restful_api.add_resource(*args, **kw)
+    def add_resource(self, resource_class, url_rule, view_name, resource_init_args=(), resource_init_kwargs=None,
+                     decorators=None):
+        if not issubclass(resource_class, BaseResource):
+            raise TypeError("Resource must inherit BaseResource")
+        if resource_init_kwargs is None:
+            resource_init_kwargs = {}
+        else:
+            assert 'request_decorators' not in resource_init_kwargs, "Use add_resource 'decorators' parameter"
+        resource_init_kwargs['request_decorators'] = self._create_decorators(decorators)
+        view_func = resource_class.as_view(view_name, *resource_init_args, **resource_init_kwargs)
+        self.register_view(view_func, url_rule)
 
     def register_view(self, view_func, url, pk='id', pk_type='int'):
         app = self._blueprint
         app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
         app.add_url_rule(url, view_func=view_func, methods=['POST', ])
-        app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func,
-            methods=['GET', 'PUT', 'DELETE'])
+        app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=['GET', 'PUT', 'DELETE'])
+
+    def _create_decorators(self, request_decorators):
+        merged_request_decorators = ResourceDecorators(request_decorators)
+        merged_request_decorators.merge(self._api_request_decorators)
+        return merged_request_decorators
+
 
     @staticmethod
     def create_default_serializer(model_class):
@@ -160,7 +177,6 @@ class Api(object):
         from flask_restalchemy.serialization.modelserializer import ModelSerializer
         return ModelSerializer(model_class)
 
-    @property
     def get_db_session(self):
         """
         Returns an SQLAlchemy object session. Used by flask-restful Resources to access
@@ -200,3 +216,40 @@ class Api(object):
                 return serializer_class(column)
         else:
             return None
+
+
+
+class ResourceDecorators(Mapping):
+
+    def __init__(self, request_decorators=None):
+        self._verb_decorators = {}
+        for verb in ['ALL', 'GET', 'POST', 'PUT', 'DELETE']:
+            self._verb_decorators[verb] = []
+        if request_decorators:
+            self.merge(request_decorators)
+
+    def merge(self, request_decorators):
+        if callable(request_decorators):
+            self._verb_decorators['ALL'].append(request_decorators)
+        elif isinstance(request_decorators, list):
+            self._verb_decorators['ALL'].extend(request_decorators)
+        elif isinstance(request_decorators, (dict, ResourceDecorators)):
+            for verb, decorator_value in request_decorators.items():
+                if callable(decorator_value):
+                    self._verb_decorators[verb].append(decorator_value)
+                elif isinstance(decorator_value, list):
+                    self._verb_decorators[verb].extend(decorator_value)
+                else:
+                    raise TypeError()
+        else:
+            TypeError()
+
+
+    def __getitem__(self, verb):
+        return self._verb_decorators[verb]
+
+    def __iter__(self):
+        return iter(self._verb_decorators)
+
+    def __len__(self):
+        return len(self._verb_decorators)
