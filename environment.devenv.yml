@@ -7,10 +7,9 @@ dependencies:
   - sqlalchemy-utils>=0.30
   - flask-sqlalchemy>=2.3.0
   - pytest
-  - pytest-regeressions
+  - pytest-regressions
   - pytest-mock>=1.10.0
   - tox
-
 
 environment:
   PYTHONPATH:
