@@ -1,4 +1,4 @@
-from collections import MutableMapping, Mapping
+from collections import Mapping
 
 from flask import current_app
 
@@ -12,7 +12,7 @@ from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSe
 
 class Api(object):
 
-    def __init__(self, blueprint=None, errors=None, request_decorators=None):
+    def __init__(self, blueprint=None, request_decorators=None):
         """
         :param (Flask|Blueprint) blueprint: Flask application or Blueprint
 
