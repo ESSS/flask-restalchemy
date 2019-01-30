@@ -1,6 +1,6 @@
 import warnings
 
-from flask import request, json, jsonify
+from flask import request, json, jsonify, Response
 from flask.views import MethodView
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm.collections import InstrumentedList
@@ -26,7 +26,10 @@ class BaseResource(MethodView):
     def dispatch_request(self, *args, **kwargs):
         view_response = super().dispatch_request(*args, **kwargs)
         data, code, header = unpack(view_response)
-        return jsonify(data), code, header
+        if isinstance(data, Response):
+            return data
+        else:
+            return jsonify(data), code, header
 
 
 class BaseModelResource(BaseResource):
