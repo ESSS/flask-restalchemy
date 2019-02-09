@@ -57,7 +57,7 @@ class BaseModelResource(BaseResource):
 
     def save_from_request(self, extra_attrs={}):
         session = self._session_getter()
-        model_obj = self._serializer.load(load_request_data())
+        model_obj = self._serializer.load(load_request_json())
         for attr_name, value in extra_attrs.items():
             setattr(model_obj, attr_name, value)
         session.add(model_obj)
@@ -108,7 +108,7 @@ class ModelResource(BaseModelResource):
             return data
 
     def put(self, id):
-        request_data = load_request_data()
+        request_data = load_request_json()
         data = self._resource_model.query.get(id)
         if data is None:
             return NOT_FOUND_ERROR, 404
@@ -130,7 +130,7 @@ class ModelResource(BaseModelResource):
         return '', 204
 
     def post(self):
-        document = load_request_data()
+        document = load_request_json()
         saved = self._save_serialized(document)
         return saved, 201
 
@@ -194,7 +194,7 @@ class ToManyRelationResource(BaseModelResource):
         if not related_obj:
             return NOT_FOUND_ERROR, 404
         collection = getattr(related_obj, self._relation_property.key)
-        data_dict = load_request_data()
+        data_dict = load_request_json()
         resource_id = data_dict.get('id', None)
 
         if resource_id is not None:
@@ -217,7 +217,7 @@ class ToManyRelationResource(BaseModelResource):
         return self._serializer.dump(resource_obj), 200
 
     def put(self, relation_id, id):
-        request_data = load_request_data()
+        request_data = load_request_json()
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
@@ -286,7 +286,7 @@ class CollectionPropertyResource(ToManyRelationResource):
         return 'POST not allowed for property resources', 405
 
 
-def load_request_data():
+def load_request_json():
     """
     Returns request data as dict.
 

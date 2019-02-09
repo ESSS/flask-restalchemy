@@ -2,9 +2,7 @@ from collections import Mapping
 
 from flask import current_app
 
-from flask_restalchemy.resources import ToManyRelationResource, ModelResource, \
-    CollectionPropertyResource
-from flask_restalchemy.resources.resources import BaseResource
+from .resources.resources import ToManyRelationResource, ModelResource, CollectionPropertyResource, BaseResource
 from flask_restalchemy.serialization import ColumnSerializer
 from flask_restalchemy.serialization.datetimeserializer import is_datetime_field, DateTimeSerializer
 from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSerializer
