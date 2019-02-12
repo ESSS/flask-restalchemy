@@ -5,7 +5,7 @@ from flask.views import MethodView
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm.collections import InstrumentedList
 
-from flask_restalchemy.serialization.modelserializer import ModelSerializer
+from flask_restalchemy.serialization import ModelSerializer
 from .querybuilder import query_from_request
 
 
@@ -55,40 +55,30 @@ class BaseModelResource(BaseResource):
                           ModelSerializer), 'Invalid serializer instance: {}'.format(serializer)
         self._session_getter = session_getter
 
-    def save_from_request(self, extra_attrs={}):
+    def _save_model(self, model, method):
         session = self._session_getter()
-        model_obj = self._serializer.load(load_request_json())
-        for attr_name, value in extra_attrs.items():
-            setattr(model_obj, attr_name, value)
-        session.add(model_obj)
-        session.commit()
-        return self._serializer.dump(model_obj).data
-
-    def _save_model(self, model_obj, method):
-        session = self._session_getter()
-        session.add(model_obj)
-
+        session.add(model)
         # run pre commit hooks
         if method == 'POST':
-            self._serializer.before_post_commit(model_obj, session)
+            self._serializer.before_post_commit(model, session)
         elif method == 'PUT':
-            self._serializer.before_put_commit(model_obj, session)
+            self._serializer.before_put_commit(model, session)
 
         session.commit()
 
         # run post commit hooks
         if method == 'POST':
-            self._serializer.after_post_commit(model_obj, session)
+            self._serializer.after_post_commit(model, session)
         elif method == 'PUT':
-            self._serializer.after_put_commit(model_obj, session)
+            self._serializer.after_put_commit(model, session)
+
 
     def _save_serialized(self, serialized_data, existing_model=None):
-        model_obj = self._serializer.load(serialized_data, existing_model)
+        model = self._serializer.load(serialized_data, existing_model, self._session_getter())
 
         method = 'PUT' if existing_model else 'POST'
-        self._save_model(model_obj, method)
-
-        return self._serializer.dump(model_obj)
+        self._save_model(model, method)
+        return self._serializer.dump(model)
 
     @property
     def _db_session(self):
@@ -99,41 +89,40 @@ class ModelResource(BaseModelResource):
 
     def get(self, id=None):
         if id is not None:
-            data = self._resource_model.query.get(id)
-            if data is None:
+            model = self._resource_model.query.get(id)
+            if model is None:
                 return NOT_FOUND_ERROR, 404
-            return self._serializer.dump(data)
+            return self._serializer.dump(model)
         else:
-            data = query_from_request(self._resource_model, self._serializer, request)
-            return data
+            model = query_from_request(self._resource_model, self._serializer, request)
+            return model
+
+    def post(self):
+        serialized = load_request_json()
+        saved = self._save_serialized(serialized)
+        return saved, 201
+
 
     def put(self, id):
-        request_data = load_request_json()
-        data = self._resource_model.query.get(id)
-        if data is None:
+        model = self._resource_model.query.get(id)
+        if model is None:
             return NOT_FOUND_ERROR, 404
 
-        serialized = self._serializer.dump(data)
+        serialized = self._serializer.dump(model)
+        request_data = load_request_json()
         serialized.update(request_data)
-        result = self._save_serialized(serialized, data)
+        result = self._save_serialized(serialized, existing_model=model)
         return result
 
     def delete(self, id):
-        data = self._resource_model.query.get(id)
-        if data is None:
+        model = self._resource_model.query.get(id)
+        if model is None:
             return NOT_FOUND_ERROR, 404
         session = self._db_session
-        session.delete(data)
-        was_deleted = len(session.deleted) > 0
+        session.delete(model)
         session.flush()
         session.commit()
         return '', 204
-
-    def post(self):
-        document = load_request_json()
-        saved = self._save_serialized(document)
-        return saved, 201
-
 
 class ToManyRelationResource(BaseModelResource):
     """
@@ -198,23 +187,18 @@ class ToManyRelationResource(BaseModelResource):
         resource_id = data_dict.get('id', None)
 
         if resource_id is not None:
-            return self.append_existent(collection, resource_id, session)
-
-        new_obj = self._serializer.load(data_dict)
-        session.add(new_obj)
-        collection.append(new_obj)
-
-        self._save_model(new_obj, 'POST')
-        saved = self._serializer.dump(new_obj)
-        return saved, 201
-
-    def append_existent(self, collection, resource_id, session):
-        resource_obj = session.query(self._resource_model).get(resource_id)
-        if resource_obj is None:
-            return NOT_FOUND_ERROR, 404
-        collection.append(resource_obj)
-        session.commit()
-        return self._serializer.dump(resource_obj), 200
+            model = session.query(self._resource_model).get(resource_id)
+            if model is None:
+                return NOT_FOUND_ERROR, 404
+            status_code = 200
+        else:
+            model = self._serializer.load(data_dict, session=session)
+            status_code = 201
+            session.add(model)
+        collection.append(model)
+        self._save_model(model, "POST")
+        saved = self._serializer.dump(model)
+        return saved, status_code
 
     def put(self, relation_id, id):
         request_data = load_request_json()

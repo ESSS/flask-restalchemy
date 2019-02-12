@@ -1,8 +1,8 @@
 import pytest
 from flask import json
+from flask_restalchemy.serialization import ModelSerializer, Field, NestedModelField
 
 from flask_restalchemy import Api
-from flask_restalchemy.serialization import ModelSerializer, Field, NestedModelField
 from flask_restalchemy.tests.sample_model import Employee, Company, Department, Address
 
 
@@ -154,7 +154,6 @@ def test_property_pagination(client):
 def test_delete_on_relation_with_secondary(client):
     jim = Employee.query.get(9)
     assert jim is not None
-    assert len(jim.departments) > 0
     dep = jim.departments[0]
 
     sarah = Employee.query.get(3)

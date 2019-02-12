@@ -75,7 +75,7 @@ class Employee(Base):
     )
     address_id = Column(ForeignKey('Address.id'))
     address = relationship(Address)
-    departments = relationship('Department', secondary='employee_department')
+    departments = relationship('Department', secondary='employee_department', lazy='dynamic')
     contacts = relationship(Contact, cascade='all, delete-orphan')
 
     password = Column(String)

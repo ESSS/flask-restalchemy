@@ -5,6 +5,7 @@ install_requires=[
     'sqlalchemy_utils>=0.30',
     'flask>=1.0.0',
     'sqlalchemy>=1.1',
+    'serialchemy',
 ]
 
 extras_require = {

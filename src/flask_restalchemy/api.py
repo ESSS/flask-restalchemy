@@ -2,10 +2,9 @@ from collections import Mapping
 
 from flask import current_app
 
-from .resources.resources import ToManyRelationResource, ModelResource, CollectionPropertyResource, BaseResource
-from flask_restalchemy.serialization import ColumnSerializer
-from flask_restalchemy.serialization.datetimeserializer import is_datetime_field, DateTimeSerializer
-from flask_restalchemy.serialization.enumserializer import is_enum_field, EnumSerializer
+from .serialization import ColumnSerializer, ModelSerializer
+from .resources.resources import ToManyRelationResource, ModelResource, CollectionPropertyResource, \
+    BaseResource
 
 
 class Api(object):
@@ -172,7 +171,6 @@ class Api(object):
 
         :rtype: class
         """
-        from flask_restalchemy.serialization.modelserializer import ModelSerializer
         return ModelSerializer(model_class)
 
     def get_db_session(self):
@@ -187,8 +185,6 @@ class Api(object):
             self._db = flask_app.extensions['sqlalchemy'].db
         return self._db.session
 
-    _FIELD_SERIALIZERS = [(DateTimeSerializer, is_datetime_field), (EnumSerializer, is_enum_field)]
-
     @classmethod
     def register_column_serializer(cls, serializer_class, predicate):
         '''
@@ -200,24 +196,14 @@ class Api(object):
         '''
         if not issubclass(serializer_class, ColumnSerializer):
             raise TypeError('Invalid serializer class')
-        cls._FIELD_SERIALIZERS.append((serializer_class, predicate))
-
-    @classmethod
-    def find_column_serializer(cls, column):
-        '''
-        :param Column column: search for a registered serializer for the given column
-
-        :rtype: ColumnSerializer
-        '''
-        for serializer_class, predicate in reversed(cls._FIELD_SERIALIZERS):
-            if predicate(column):
-                return serializer_class(column)
-        else:
-            return None
-
+        ModelSerializer.EXTRA_SERIALIZERS.append((serializer_class, predicate))
 
 
 class ResourceDecorators(Mapping):
+    """
+    API decorators can be set at the API instance level or per resource added. This class helps
+    to manage and merge decorators added with both strategies.
+    """
 
     def __init__(self, request_decorators=None):
         self._verb_decorators = {}

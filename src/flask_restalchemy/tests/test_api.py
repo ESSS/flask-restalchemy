@@ -2,10 +2,9 @@ import json
 from datetime import datetime
 
 import pytest
+from flask_restalchemy.serialization import ModelSerializer, Field, NestedModelField, NestedModelListField
 
 from flask_restalchemy import Api
-from flask_restalchemy.serialization import ModelSerializer, Field, NestedModelField
-from flask_restalchemy.serialization.fields import NestedModelListField
 from flask_restalchemy.tests.sample_model import Employee, Company, Address, Contact, ContactType
 
 
