@@ -58,7 +58,7 @@ class Api(object):
             serializer = self.create_default_serializer(model)
         else:
             serializer = serializer_class(model)
-        url = url or '/' + view_name.lower()
+        url = url if url is not None else '/' + view_name.lower()
 
         view_init_args = (model, serializer, self.get_db_session)
         decorators = self._create_decorators(request_decorators)
