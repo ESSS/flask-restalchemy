@@ -4,7 +4,7 @@ from flask import current_app
 
 from .serialization import ColumnSerializer, ModelSerializer
 from .resources.resources import ToManyRelationResource, ModelResource, CollectionPropertyResource, \
-    BaseResource
+    BaseResource, ViewFunctionResource
 
 
 class Api(object):
@@ -12,11 +12,6 @@ class Api(object):
     def __init__(self, blueprint=None, request_decorators=None):
         """
         :param (Flask|Blueprint) blueprint: Flask application or Blueprint
-
-        :param str prefix: API endpoints prefix
-
-        :param errors: A dictionary to define a custom response for each
-            exception or error raised during a request
 
         :param callable request_decorators: request decorators for this API object (see
             Flask-Restful decorators docs for more information)
@@ -155,6 +150,12 @@ class Api(object):
         app.add_url_rule(url, view_func=view_func, methods=['POST', ])
         app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=['GET', 'PUT', 'DELETE'])
 
+    def add_url_rule(self, rule, endpoint, view_func, request_decorators=(), methods=None):
+        app = self._blueprint
+        resource_as_view = ViewFunctionResource.as_view(endpoint, view_func,
+                                                        request_decorators=self._create_decorators(request_decorators))
+        app.add_url_rule(rule, view_func=resource_as_view, methods=methods)
+
     def _create_decorators(self, request_decorators):
         merged_request_decorators = ResourceDecorators(request_decorators)
         merged_request_decorators.merge(self._api_request_decorators)
@@ -227,7 +228,6 @@ class ResourceDecorators(Mapping):
                     raise TypeError()
         else:
             TypeError()
-
 
     def __getitem__(self, verb):
         return self._verb_decorators[verb]
