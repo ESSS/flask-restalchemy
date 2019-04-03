@@ -35,14 +35,14 @@ class BaseResource(MethodView):
 
 
 class ViewFunctionResource(BaseResource):
-    """
-        Class created to provide url rules for free functions.
-        
-        :param callable func: function to be called 
-        
-        :param dict request_decorators: dictionary of decorators for the function
-    """
 
+    """
+    Class created to provide url rules for free functions.
+
+    :param callable func: function to be called
+
+    :param dict request_decorators: dictionary of decorators for the function
+    """
     def __init__(self, func, request_decorators=None):
         super().__init__(request_decorators)
         self.func = func
@@ -310,7 +310,12 @@ def load_request_json():
 
 
 def unpack(value):
-    """Return a three tuple of data, code, and headers"""
+    """
+    Return a three tuple of data, code, and headers
+
+    :param value:
+    :return:
+    """
     if not isinstance(value, tuple):
         return value, 200, {}
 
