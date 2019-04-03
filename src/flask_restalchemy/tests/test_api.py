@@ -116,4 +116,57 @@ def test_url_rule(flask_app, client):
     assert resp.data == b'hello raynor'
 
 
+def test_http_verbs(flask_app, client):
 
+    def get(*args, **kwargs):
+        return 'ping'
+
+    def post(*args, **kwargs):
+        return 'ping'
+
+    def get_post(*args, **kwargs):
+        return 'ping'
+
+    def put_del(*args, **kwargs):
+        return 'ping'
+
+    api = Api(flask_app)
+    api.register_view(get, '/get_col_only', methods=['GET_COLLECTION'])
+    resp = client.get('/get_col_only')
+    assert resp.status_code == 200
+    resp = client.post('/get_col_only')
+    assert resp.status_code == 405
+    resp = client.put('/get_col_only')
+    assert resp.status_code == 405
+    resp = client.delete('/get_col_only')
+    assert resp.status_code == 405
+
+    api.register_view(post, '/post_only', methods=['POST'])
+    resp = client.get('/post_only')
+    assert resp.status_code == 405
+    resp = client.post('/post_only')
+    assert resp.status_code == 200
+    resp = client.put('/post_only')
+    assert resp.status_code == 405
+    resp = client.delete('/post_only')
+    assert resp.status_code == 405
+
+    api.register_view(get_post, '/post_getcol_only', methods=['GET_COLLECTION', 'POST'])
+    resp = client.get('/post_getcol_only')
+    assert resp.status_code == 200
+    resp = client.post('/post_getcol_only')
+    assert resp.status_code == 200
+    resp = client.put('/post_getcol_only')
+    assert resp.status_code == 405
+    resp = client.delete('/post_getcol_only')
+    assert resp.status_code == 405
+
+    api.register_view(put_del, '/put_del_only', methods=['PUT', 'DELETE'])
+    resp = client.get('/put_del_only/1')
+    assert resp.status_code == 405
+    resp = client.post('/put_del_only/1')
+    assert resp.status_code == 405
+    resp = client.put('/put_del_only/1')
+    assert resp.status_code == 200
+    resp = client.delete('/put_del_only/1')
+    assert resp.status_code == 200

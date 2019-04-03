@@ -140,21 +140,38 @@ class Api(object):
             assert 'request_decorators' not in resource_init_kwargs, "Use add_resource 'decorators' parameter"
         resource_init_kwargs['request_decorators'] = self._create_decorators(decorators)
         view_func = resource_class.as_view(view_name, *resource_init_args, **resource_init_kwargs)
-        self.register_view(view_func, url_rule, methods)
+        self.register_view(view_func, url_rule, methods=methods)
 
     def register_view(self, view_func, url, pk='id', pk_type='int', methods=None):
+        """
+        Configure URL rule as specified by HTTP verbs passed as parameter.
+
+        :param view_func: the function to call when serving a request to the
+                          provided endpoint
+
+        :param url: one or more url routes to match for the resource, standard flask routing rules
+            apply. Defaults to model name in lower case.
+
+        :param pk: primary key
+
+        :param pk_type: primary key type
+
+        :param list[str] methods: verbs to be accepted by view
+        """
         app = self._blueprint
-        if not methods:
+        if methods is None:
             app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
             app.add_url_rule(url, view_func=view_func, methods=['POST', ])
             app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=['GET', 'PUT', 'DELETE'])
         else:
-            if methods['GET']:
+            if 'GET_COLLECTION' in methods:
+                methods.pop(methods.index('GET_COLLECTION'))
                 app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
-            if methods['POST']:
+            if 'POST' in methods:
+                methods.pop(methods.index('POST'))
                 app.add_url_rule(url, view_func=view_func, methods=['POST', ])
-            if methods['DELETE']:
-                app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=['GET', 'PUT', 'DELETE'])
+            if methods:
+                app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=methods)
 
     def add_url_rule(self, rule, endpoint, view_func, request_decorators=(), methods=None):
         app = self._blueprint
@@ -198,6 +215,7 @@ class Api(object):
         Register a serializer for a given column to be used globally by ModelSerializers
 
         :param Type[ColumnSerializer] serializer_class: the Serializer class
+
         :param callable predicate: a function that receives a column type and returns True if the
             given serializer is valid for that column
         '''
