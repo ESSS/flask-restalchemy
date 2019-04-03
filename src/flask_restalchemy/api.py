@@ -165,10 +165,10 @@ class Api(object):
             app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=['GET', 'PUT', 'DELETE'])
         else:
             if 'GET_COLLECTION' in methods:
-                methods.pop(methods.index('GET_COLLECTION'))
+                methods.remove('GET_COLLECTION')
                 app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
             if 'POST' in methods:
-                methods.pop(methods.index('POST'))
+                methods.remove('POST')
                 app.add_url_rule(url, view_func=view_func, methods=['POST', ])
             if methods:
                 app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=methods)

@@ -6,6 +6,7 @@ from flask_restalchemy.serialization import ModelSerializer, Field, NestedModelF
 
 from flask_restalchemy import Api
 from flask_restalchemy.tests.sample_model import Employee, Company, Address, Contact, ContactType
+from flask_restalchemy.resources.resources import ViewFunctionResource
 
 
 class EmployeeSerializer(ModelSerializer):
@@ -116,57 +117,27 @@ def test_url_rule(flask_app, client):
     assert resp.data == b'hello raynor'
 
 
-def test_http_verbs(flask_app, client):
+@pytest.mark.parametrize("methods", [
+    ['GET_COLLECTION', 'GET', 'POST', 'PUT', 'DELETE'],
+    ['GET_COLLECTION',],
+    ['POST',],
+    ['GET_COLLECTION', 'POST'],
+    ['PUT', 'DELETE'],
+])
+def test_http_verbs(flask_app, client, methods):
 
-    def get(*args, **kwargs):
-        return 'ping'
-
-    def post(*args, **kwargs):
-        return 'ping'
-
-    def get_post(*args, **kwargs):
-        return 'ping'
-
-    def put_del(*args, **kwargs):
+    def ping(*args, **kwargs):
         return 'ping'
 
     api = Api(flask_app)
-    api.register_view(get, '/get_col_only', methods=['GET_COLLECTION'])
-    resp = client.get('/get_col_only')
-    assert resp.status_code == 200
-    resp = client.post('/get_col_only')
-    assert resp.status_code == 405
-    resp = client.put('/get_col_only')
-    assert resp.status_code == 405
-    resp = client.delete('/get_col_only')
-    assert resp.status_code == 405
-
-    api.register_view(post, '/post_only', methods=['POST'])
-    resp = client.get('/post_only')
-    assert resp.status_code == 405
-    resp = client.post('/post_only')
-    assert resp.status_code == 200
-    resp = client.put('/post_only')
-    assert resp.status_code == 405
-    resp = client.delete('/post_only')
-    assert resp.status_code == 405
-
-    api.register_view(get_post, '/post_getcol_only', methods=['GET_COLLECTION', 'POST'])
-    resp = client.get('/post_getcol_only')
-    assert resp.status_code == 200
-    resp = client.post('/post_getcol_only')
-    assert resp.status_code == 200
-    resp = client.put('/post_getcol_only')
-    assert resp.status_code == 405
-    resp = client.delete('/post_getcol_only')
-    assert resp.status_code == 405
-
-    api.register_view(put_del, '/put_del_only', methods=['PUT', 'DELETE'])
-    resp = client.get('/put_del_only/1')
-    assert resp.status_code == 405
-    resp = client.post('/put_del_only/1')
-    assert resp.status_code == 405
-    resp = client.put('/put_del_only/1')
-    assert resp.status_code == 200
-    resp = client.delete('/put_del_only/1')
-    assert resp.status_code == 200
+    api.add_resource(ViewFunctionResource, '/ping', 'ping', resource_init_args=(ping,), methods=methods)
+    resp = client.get('/ping')
+    assert resp.status_code == 200 if 'GET_COLLECTION' in methods else 405
+    resp = client.get('/ping/1')
+    assert resp.status_code == 200 if 'GET' in methods else 405
+    resp = client.post('/ping')
+    assert resp.status_code == 200 if 'POST' in methods else 405
+    resp = client.delete('/ping/1')
+    assert resp.status_code == 200 if 'PUT' in methods else 405
+    resp = client.put('/ping/1')
+    assert resp.status_code == 200 if 'DELETE' in methods else 405
