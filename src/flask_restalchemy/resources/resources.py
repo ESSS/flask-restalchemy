@@ -36,11 +36,11 @@ class BaseResource(MethodView):
 
 class ViewFunctionResource(BaseResource):
     """
-        Class created to provide url rules for free functions.
-        
-        :param callable func: function to be called 
-        
-        :param dict request_decorators: dictionary of decorators for the function
+    Class created to provide url rules for free functions.
+
+    :param callable func: function to be called
+
+    :param dict request_decorators: dictionary of decorators for the function
     """
 
     def __init__(self, func, request_decorators=None):

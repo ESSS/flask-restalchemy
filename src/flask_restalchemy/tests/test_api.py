@@ -115,5 +115,17 @@ def test_url_rule(flask_app, client):
     assert resp.status_code == 200
     assert resp.data == b'hello raynor'
 
+    resp = client.post('/kerrigan')
+    assert resp.status_code == 200
+    assert resp.data == b'hello kerrigan'
+
+    resp = client.put('/artanis')
+    assert resp.status_code == 200
+    assert resp.data == b'hello artanis'
+
+    resp = client.delete('/zeratul')
+    assert resp.status_code == 200
+    assert resp.data == b'hello zeratul'
+
 
 
