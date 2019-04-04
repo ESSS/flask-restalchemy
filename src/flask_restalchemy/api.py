@@ -4,7 +4,7 @@ from flask import current_app
 
 from .serialization import ColumnSerializer, ModelSerializer
 from .resources.resources import ToManyRelationResource, ModelResource, CollectionPropertyResource, \
-    BaseResource
+    BaseResource, ViewFunctionResource
 
 
 class Api(object):
@@ -12,11 +12,6 @@ class Api(object):
     def __init__(self, blueprint=None, request_decorators=None):
         """
         :param (Flask|Blueprint) blueprint: Flask application or Blueprint
-
-        :param str prefix: API endpoints prefix
-
-        :param errors: A dictionary to define a custom response for each
-            exception or error raised during a request
 
         :param callable request_decorators: request decorators for this API object (see
             Flask-Restful decorators docs for more information)
@@ -78,12 +73,9 @@ class Api(object):
         :param Type[ModelSerializer] serializer_class: If `None`, a default serializer will be created.
 
         :param list|dict request_decorators: decorators to be applied to HTTP methods. Could be a list of decorators
-            or a dict mapping HTTP method types to a list of decorators (dict keys should be 'get', 'post' or 'put').
+            or a dict mapping HTTP verb types to a list of decorators (dict keys should be 'get', 'post' or 'put').
             See https://flask-restful.readthedocs.io/en/latest/extending.html#resource-method-decorators for more
             details.
-
-        :param list|dict collection_decorators: decorators to be applied to HTTP methods for collections. It defaults to
-            request_decorators value.
 
         :param string endpoint_name: endpoint name (defaults to :meth:`{model_collection_name}-{related_collection_name}-relation`
             Can be used to reference this route in :class:`fields.Url` fields
@@ -149,11 +141,39 @@ class Api(object):
         view_func = resource_class.as_view(view_name, *resource_init_args, **resource_init_kwargs)
         self.register_view(view_func, url_rule)
 
-    def register_view(self, view_func, url, pk='id', pk_type='int'):
+    def register_view(self, view_func, url, pk='id', pk_type='int', methods=None):
         app = self._blueprint
         app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
         app.add_url_rule(url, view_func=view_func, methods=['POST', ])
         app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=['GET', 'PUT', 'DELETE'])
+
+
+
+    def add_url_rule(self, rule, endpoint, view_func, methods=None, request_decorators=()):
+        """
+        This is almost the same as `Flask.add_url_rule` method, but with added support for
+        decorators.
+
+        :param rule: the URL rule as string
+
+        :param endpoint: the endpoint for the registered URL rule.  Flask
+                         itself assumes the name of the view function as
+                         endpoint
+
+        :param view_func: the function to call when serving a request to the
+                          provided endpoint
+
+        :param list[str] methods: verbs to be accepted by view
+
+        :param list|dict request_decorators: decorators to be applied to HTTP methods. Could be a list of decorators
+            or a dict mapping HTTP verb types to a list of decorators (dict keys should be 'get', 'post' or 'put').
+            See https://flask-restful.readthedocs.io/en/latest/extending.html#resource-method-decorators for more
+            details.
+        """
+        app = self._blueprint
+        resource_as_view = ViewFunctionResource.as_view(endpoint, view_func,
+                                                        request_decorators=self._create_decorators(request_decorators))
+        app.add_url_rule(rule, view_func=resource_as_view, methods=methods)
 
     def _create_decorators(self, request_decorators):
         merged_request_decorators = ResourceDecorators(request_decorators)
@@ -227,7 +247,6 @@ class ResourceDecorators(Mapping):
                     raise TypeError()
         else:
             TypeError()
-
 
     def __getitem__(self, verb):
         return self._verb_decorators[verb]

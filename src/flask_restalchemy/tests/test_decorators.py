@@ -5,6 +5,7 @@ from werkzeug.exceptions import abort
 
 from flask_restalchemy import Api
 from flask_restalchemy.tests.sample_model import Address, Company
+from flask_restalchemy.resources.resources import ViewFunctionResource
 
 
 def auth_required(func):
@@ -21,7 +22,8 @@ def post_hook(func):
     @wraps(func)
     def authenticate(*args, **kw):
         response = func(*args, **kw)
-        response
+        if isinstance(response, str):
+            response = response + 'post_hook'
         return response
 
     return authenticate
@@ -52,5 +54,19 @@ def test_api_decorators(client, flask_app):
     assert client.post('/company', data={'name': 'Terran'}, headers={'auth': True}).status_code == 201
     assert client.get('/company', headers={'auth': True}).status_code == 200
 
-    response = client.get('/address', headers={'auth': True})
+    response = client.post('/address', headers={'auth': True})
+
+
+def test_add_rule_decorators(client, flask_app):
+
+    def hello_world():
+        return 'hello world'
+
+    api = Api(flask_app, request_decorators=[auth_required])
+    api.add_url_rule('/', 'index', hello_world, request_decorators={'POST': [post_hook]})
+    resp = client.get('/')
+    assert resp.status_code == 403
+    resp = client.post('/', headers={'auth': True})
+    assert resp.status_code == 200
+    assert resp.data == b'hello worldpost_hook'
 

@@ -24,7 +24,6 @@ def sample_api(flask_app):
     api.add_model(Company, view_name='alt_company')
     api.add_model(Employee, serializer_class=EmployeeSerializer)
 
-
 @pytest.fixture(autouse=True)
 def create_test_sample(db_session):
     contact_type1 = ContactType(label='Phone')
@@ -103,3 +102,30 @@ def test_alternative_url(client):
     assert resp.status_code == 200
     data = resp.get_json()
     assert data['name'] == 'Terrans'
+
+
+def test_url_rule(flask_app, client):
+
+    def hello_world(name):
+        return f'hello {name}'
+
+    api = Api(flask_app)
+    api.add_url_rule('/<string:name>', 'index', hello_world)
+    resp = client.get('/raynor')
+    assert resp.status_code == 200
+    assert resp.data == b'hello raynor'
+
+    resp = client.post('/kerrigan')
+    assert resp.status_code == 200
+    assert resp.data == b'hello kerrigan'
+
+    resp = client.put('/artanis')
+    assert resp.status_code == 200
+    assert resp.data == b'hello artanis'
+
+    resp = client.delete('/zeratul')
+    assert resp.status_code == 200
+    assert resp.data == b'hello zeratul'
+
+
+

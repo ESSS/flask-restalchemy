@@ -28,8 +28,36 @@ class BaseResource(MethodView):
         data, code, header = unpack(view_response)
         if isinstance(data, Response):
             return data
+        elif isinstance(data, str):
+            return data, code, header
         else:
             return jsonify(data), code, header
+
+
+class ViewFunctionResource(BaseResource):
+    """
+    Class created to provide url rules for free functions.
+
+    :param callable func: function to be called
+
+    :param dict request_decorators: dictionary of decorators for the function
+    """
+
+    def __init__(self, func, request_decorators=None):
+        super().__init__(request_decorators)
+        self.func = func
+
+    def get(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    def post(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
 
 
 class BaseModelResource(BaseResource):
@@ -101,7 +129,6 @@ class ModelResource(BaseModelResource):
         serialized = load_request_json()
         saved = self._save_serialized(serialized)
         return saved, 201
-
 
     def put(self, id):
         model = self._resource_model.query.get(id)
