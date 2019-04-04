@@ -71,7 +71,7 @@ class Api(object):
         :param Type[ModelSerializer] serializer_class: If `None`, a default serializer will be created.
 
         :param list|dict request_decorators: decorators to be applied to HTTP methods. Could be a list of decorators
-            or a dict mapping HTTP method types to a list of decorators (dict keys should be 'get', 'post' or 'put').
+            or a dict mapping HTTP verb types to a list of decorators (dict keys should be 'get', 'post' or 'put').
             See https://flask-restful.readthedocs.io/en/latest/extending.html#resource-method-decorators for more
             details.
 
@@ -173,7 +173,29 @@ class Api(object):
             if methods:
                 app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=methods)
 
-    def add_url_rule(self, rule, endpoint, view_func, request_decorators=(), methods=None):
+
+
+    def add_url_rule(self, rule, endpoint, view_func, methods=None, request_decorators=()):
+        """
+        This is almost the same as `Flask.add_url_rule` method, but with added support for
+        decorators.
+
+        :param rule: the URL rule as string
+
+        :param endpoint: the endpoint for the registered URL rule.  Flask
+                         itself assumes the name of the view function as
+                         endpoint
+
+        :param view_func: the function to call when serving a request to the
+                          provided endpoint
+
+        :param list[str] methods: verbs to be accepted by view
+
+        :param list|dict request_decorators: decorators to be applied to HTTP methods. Could be a list of decorators
+            or a dict mapping HTTP verb types to a list of decorators (dict keys should be 'get', 'post' or 'put').
+            See https://flask-restful.readthedocs.io/en/latest/extending.html#resource-method-decorators for more
+            details.
+        """
         app = self._blueprint
         resource_as_view = ViewFunctionResource.as_view(endpoint, view_func,
                                                         request_decorators=self._create_decorators(request_decorators))
@@ -198,7 +220,7 @@ class Api(object):
         return ModelSerializer(model_class)
 
     def get_db_session(self):
-        """
+        """ef register_view(self, view_func, url, pk='id', pk_type='int', methods=None):
         Returns an SQLAlchemy object session. Used by flask-restful Resources to access
         the database.
         """
