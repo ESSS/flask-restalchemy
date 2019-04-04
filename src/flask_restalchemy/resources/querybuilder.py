@@ -27,8 +27,8 @@ def query_from_request(model, model_serializer, request, query=None):
         SQLAlchemy query instance
 
     :rtype: list|dict
-    :return: the serialized response: "if 'page' is defined in the query params, a dict with page, per page, count and results is returned,
-    otherwise returns a list of serialized objects"
+    :return: the serialized response: "if 'page' is defined in the query params, a dict with page,
+             per page, count and results is returned, otherwise returns a list of serialized objects"
     """
     if not query:
         query = model.query

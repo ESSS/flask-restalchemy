@@ -25,7 +25,7 @@ class Api(object):
     def init_app(self, blueprint):
         self._blueprint = blueprint
 
-    def add_model(self, model, url=None, serializer_class=None, view_name=None, request_decorators=None):
+    def add_model(self, model, url=None, serializer_class=None, view_name=None, request_decorators=None, methods=None):
         """
         Create API endpoints for the given SQLAlchemy declarative class.
 
@@ -44,9 +44,7 @@ class Api(object):
             list of decorators or a dict mapping HTTP method types to a list of decorators (dict
             keys should be 'get', 'post' or 'put').
 
-        :param preprocessors: A dict with the lists of callable preprocessors for each API method
-
-        :param postprocessors: A dict with the lists of callable postprocessors for each API method
+        :param list methods: A list with verbs to be used, if None, default will use all
         """
         view_name = view_name or model.__tablename__
         if not serializer_class:
@@ -57,10 +55,10 @@ class Api(object):
 
         view_init_args = (model, serializer, self.get_db_session)
         decorators = self._create_decorators(request_decorators)
-        self.add_resource(ModelResource, url, view_name, view_init_args, decorators=decorators)
+        self.add_resource(ModelResource, url, view_name, view_init_args, decorators=decorators, methods=methods)
 
     def add_relation(self, relation_property, url_rule=None, serializer_class=None,
-                     request_decorators=None, endpoint_name=None):
+                     request_decorators=None, endpoint_name=None, methods=None):
         """
         Create API endpoints for the given SQLAlchemy relationship.
 
@@ -80,6 +78,7 @@ class Api(object):
         :param string endpoint_name: endpoint name (defaults to :meth:`{model_collection_name}-{related_collection_name}-relation`
             Can be used to reference this route in :class:`fields.Url` fields
 
+        :param list methods: A list with verbs to be used, if None, default will use all
         """
         model = relation_property.prop.mapper.class_
         related_model = relation_property.class_
@@ -102,11 +101,12 @@ class Api(object):
             url_rule,
             view_name,
             view_init_args,
-            decorators=self._create_decorators(request_decorators)
+            decorators=self._create_decorators(request_decorators),
+            methods=methods
         )
 
     def add_property(self, property_type, model, property_name, url_rule=None,
-                     serializer_class=None, request_decorators=[], endpoint_name=None):
+                     serializer_class=None, request_decorators=[], endpoint_name=None, methods=None):
         if not serializer_class:
             serializer = self.create_default_serializer(property_type)
         else:
@@ -126,11 +126,12 @@ class Api(object):
             url_rule,
             view_name,
             view_init_args,
-            decorators=self._create_decorators(request_decorators)
+            decorators=self._create_decorators(request_decorators),
+            methods=methods
         )
 
     def add_resource(self, resource_class, url_rule, view_name, resource_init_args=(), resource_init_kwargs=None,
-                     decorators=None):
+                     decorators=None, methods=None):
         if not issubclass(resource_class, BaseResource):
             raise TypeError("Resource must inherit BaseResource")
         if resource_init_kwargs is None:
@@ -139,13 +140,38 @@ class Api(object):
             assert 'request_decorators' not in resource_init_kwargs, "Use add_resource 'decorators' parameter"
         resource_init_kwargs['request_decorators'] = self._create_decorators(decorators)
         view_func = resource_class.as_view(view_name, *resource_init_args, **resource_init_kwargs)
-        self.register_view(view_func, url_rule)
+        self.register_view(view_func, url_rule, methods=methods)
 
     def register_view(self, view_func, url, pk='id', pk_type='int', methods=None):
+        """
+        Configure URL rule as specified by HTTP verbs passed as parameter.
+
+        :param view_func: the function to call when serving a request to the
+                          provided endpoint
+
+        :param url: one or more url routes to match for the resource, standard flask routing rules
+            apply. Defaults to model name in lower case.
+
+        :param pk: primary key
+
+        :param pk_type: primary key type
+
+        :param list[str] methods: verbs to be accepted by view
+        """
         app = self._blueprint
-        app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
-        app.add_url_rule(url, view_func=view_func, methods=['POST', ])
-        app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=['GET', 'PUT', 'DELETE'])
+        if methods is None:
+            app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
+            app.add_url_rule(url, view_func=view_func, methods=['POST', ])
+            app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=['GET', 'PUT', 'DELETE'])
+        else:
+            if 'GET_COLLECTION' in methods:
+                methods.remove('GET_COLLECTION')
+                app.add_url_rule(url, defaults={pk: None}, view_func=view_func, methods=['GET', ])
+            if 'POST' in methods:
+                methods.remove('POST')
+                app.add_url_rule(url, view_func=view_func, methods=['POST', ])
+            if methods:
+                app.add_url_rule('%s/<%s:%s>' % (url, pk_type, pk), view_func=view_func, methods=methods)
 
 
 
@@ -194,7 +220,7 @@ class Api(object):
         return ModelSerializer(model_class)
 
     def get_db_session(self):
-        """
+        """ef register_view(self, view_func, url, pk='id', pk_type='int', methods=None):
         Returns an SQLAlchemy object session. Used by flask-restful Resources to access
         the database.
         """
@@ -211,6 +237,7 @@ class Api(object):
         Register a serializer for a given column to be used globally by ModelSerializers
 
         :param Type[ColumnSerializer] serializer_class: the Serializer class
+
         :param callable predicate: a function that receives a column type and returns True if the
             given serializer is valid for that column
         '''

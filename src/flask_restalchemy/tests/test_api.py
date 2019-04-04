@@ -6,6 +6,7 @@ from flask_restalchemy.serialization import ModelSerializer, Field, NestedModelF
 
 from flask_restalchemy import Api
 from flask_restalchemy.tests.sample_model import Employee, Company, Address, Contact, ContactType
+from flask_restalchemy.resources.resources import ViewFunctionResource
 
 
 class EmployeeSerializer(ModelSerializer):
@@ -128,4 +129,27 @@ def test_url_rule(flask_app, client):
     assert resp.data == b'hello zeratul'
 
 
+@pytest.mark.parametrize("methods", [
+    ['GET_COLLECTION', 'GET', 'POST', 'PUT', 'DELETE'],
+    ['GET_COLLECTION',],
+    ['POST',],
+    ['GET_COLLECTION', 'POST'],
+    ['PUT', 'DELETE'],
+])
+def test_http_verbs(flask_app, client, methods):
 
+    def ping(*args, **kwargs):
+        return 'ping'
+
+    api = Api(flask_app)
+    api.add_resource(ViewFunctionResource, '/ping', 'ping', resource_init_args=(ping,), methods=methods)
+    resp = client.get('/ping')
+    assert resp.status_code == 200 if 'GET_COLLECTION' in methods else 405
+    resp = client.get('/ping/1')
+    assert resp.status_code == 200 if 'GET' in methods else 405
+    resp = client.post('/ping')
+    assert resp.status_code == 200 if 'POST' in methods else 405
+    resp = client.delete('/ping/1')
+    assert resp.status_code == 200 if 'PUT' in methods else 405
+    resp = client.put('/ping/1')
+    assert resp.status_code == 200 if 'DELETE' in methods else 405
