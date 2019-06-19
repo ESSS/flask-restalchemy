@@ -238,13 +238,13 @@ class ToManyRelationResource(BaseModelResource):
         return saved
 
     def delete(self, relation_id, id):
+        session = self._db_session
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
             return NOT_FOUND_ERROR, 404
-        session = self._db_session
-        session.delete(requested_obj)
-        was_deleted = len(session.deleted) > 0
-        session.flush()
+        related_obj = session.query(self._related_model).get(relation_id)
+        collection = getattr(related_obj, self._relation_property.key)
+        collection.remove(requested_obj)
         session.commit()
         return '', 204
 

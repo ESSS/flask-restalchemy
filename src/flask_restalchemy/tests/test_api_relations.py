@@ -89,11 +89,13 @@ def test_put_item(client):
 
 def test_delete_item(client):
     company = Company.query.get(3)
-    assert set([emp.firstname for emp in company.employees]) == {'Jim', 'Sarah'}
+    assert [emp.firstname for emp in company.employees] == ['Sarah', 'Jim']
 
     resp = client.delete('/company/3/employees/9')
     assert resp.status_code == 204
     assert [emp.firstname for emp in company.employees] == ['Sarah']
+    # Make sure that delete just drop the relation, and do not delete the target objects itself
+    assert Employee.query.filter_by(firstname='Jim').first()
 
     assert client.delete('/company/5/employees/999').status_code == 404
 
