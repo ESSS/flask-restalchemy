@@ -62,7 +62,7 @@ class ViewFunctionResource(BaseResource):
 
 class BaseModelResource(BaseResource):
 
-    def __init__(self, declarative_model, serializer, session_getter, request_decorators=None):
+    def __init__(self, declarative_model, serializer, session_getter, query_callback=None, request_decorators=None):
         """
         The Base class for ORM resources
 
@@ -82,6 +82,8 @@ class BaseModelResource(BaseResource):
         assert isinstance(self._serializer,
                           ModelSerializer), 'Invalid serializer instance: {}'.format(serializer)
         self._session_getter = session_getter
+        self._query_callback =  query_callback
+
 
     def _save_model(self, model, method):
         session = self._session_getter()
@@ -108,9 +110,6 @@ class BaseModelResource(BaseResource):
         self._save_model(model, method)
         return self._serializer.dump(model)
 
-    @property
-    def _db_session(self):
-        return self._session_getter()
 
 
 class ModelResource(BaseModelResource):
@@ -122,8 +121,13 @@ class ModelResource(BaseModelResource):
                 return NOT_FOUND_ERROR, 404
             return self._serializer.dump(model)
         else:
-            model = query_from_request(self._resource_model, self._serializer, request)
-            return model
+            if self._query_callback:
+                query = self._query_callback(self._resource_model)
+                query = query_from_request(self._resource_model, self._serializer, request, query=query)
+            else:
+                query = query_from_request(self._resource_model, self._serializer, request)
+
+            return create_response_from_query(query, self._serializer)
 
     def post(self):
         serialized = load_request_json()
@@ -150,6 +154,7 @@ class ModelResource(BaseModelResource):
         session.flush()
         session.commit()
         return '', 204
+
 
 class ToManyRelationResource(BaseModelResource):
     """
@@ -200,8 +205,9 @@ class ToManyRelationResource(BaseModelResource):
                     'Use flask-sqlalchemy relationship with lazy="dynamic".')
                 collection = [self._serializer.dump(item) for item in relation_list_or_query]
             else:
-                collection = query_from_request(self._resource_model, self._serializer, request,
+                query = query_from_request(self._resource_model, self._serializer, request,
                                                 query=relation_list_or_query)
+                collection = create_response_from_query(query, self._serializer)
             return collection
 
     def post(self, relation_id):
@@ -289,8 +295,9 @@ class CollectionPropertyResource(ToManyRelationResource):
                                                               ' Use flask-sqlalchemy and make your property return a query object')
             collection = [self._serializer.dump(item) for item in relation_list_or_query]
         else:
-            collection = query_from_request(self._resource_model, self._serializer, request,
+            query = query_from_request(self._resource_model, self._serializer, request,
                                             query=relation_list_or_query)
+            collection = create_response_from_query(query, self._serializer)
         return collection
 
     def post(self, relation_id):
@@ -333,5 +340,18 @@ def unpack(value):
 
     return value, 200, {}
 
+
+def create_response_from_query(query, serializer):
+    if 'page' in request.args:
+        data = query.paginate()
+        return {
+            'page': data.page,
+            'per_page': data.per_page,
+            'count': data.total,
+            'results': [serializer.dump(item) for item in data.items]
+        }
+    else:
+        data = query.all()
+        return [serializer.dump(item) for item in data]
 
 NOT_FOUND_ERROR = 'Resource not found in the database!'
