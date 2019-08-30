@@ -25,7 +25,7 @@ class Api(object):
     def init_app(self, blueprint):
         self._blueprint = blueprint
 
-    def add_model(self, model, url=None, serializer_class=None, view_name=None, request_decorators=None, methods=None):
+    def add_model(self, model, url=None, serializer_class=None, view_name=None, request_decorators=None, methods=None, query_callback=None):
         """
         Create API endpoints for the given SQLAlchemy declarative class.
 
@@ -53,7 +53,7 @@ class Api(object):
             serializer = serializer_class(model)
         url = url if url is not None else '/' + view_name.lower()
 
-        view_init_args = (model, serializer, self.get_db_session)
+        view_init_args = (model, serializer, self.get_db_session, query_callback)
         decorators = self._create_decorators(request_decorators)
         self.add_resource(ModelResource, url, view_name, view_init_args, decorators=decorators, methods=methods)
 
