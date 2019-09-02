@@ -165,7 +165,7 @@ class ToManyRelationResource(BaseModelResource):
     element of the parent model.
     """
 
-    def __init__(self, relation_property, serializer, session_getter, request_decorators=None):
+    def __init__(self, relation_property, serializer, session_getter, query_callback=None, request_decorators=None):
         """
         The Base class for ORM resources
 
@@ -179,7 +179,7 @@ class ToManyRelationResource(BaseModelResource):
         """
         resource_model = relation_property.prop.mapper.class_
         super(ToManyRelationResource, self).__init__(resource_model, serializer, session_getter,
-                                                     request_decorators=request_decorators)
+                                                        query_callback=query_callback, request_decorators=request_decorators)
         self._relation_property = relation_property
         self._related_model = relation_property.class_
 
@@ -207,8 +207,12 @@ class ToManyRelationResource(BaseModelResource):
                     'Use flask-sqlalchemy relationship with lazy="dynamic".')
                 collection = [self._serializer.dump(item) for item in relation_list_or_query]
             else:
-                query = query_from_request(self._resource_model, self._serializer, request,
-                                                query=relation_list_or_query)
+                if self._query_callback:
+                    query = self._query_callback(self._resource_model, relation_list_or_query)
+                    query = query_from_request(self._resource_model, self._serializer, request, query=query)
+                else:
+                    query = query_from_request(self._resource_model, self._serializer, request,
+                                                    query=relation_list_or_query)
                 collection = create_response_from_query(query, self._serializer)
             return collection
 
@@ -278,9 +282,12 @@ class ToManyRelationResource(BaseModelResource):
 class CollectionPropertyResource(ToManyRelationResource):
 
     def __init__(self, declarative_model, related_model, property_name, serializer,
-                 session_getter, request_decorators=None):
-        super(ToManyRelationResource, self).__init__(declarative_model, serializer,
-                                                     session_getter, request_decorators=request_decorators)
+                 session_getter, query_callback=None, request_decorators=None):
+        super(ToManyRelationResource, self).__init__(declarative_model,
+                                                     serializer,
+                                                     session_getter,
+                                                     query_callback=query_callback,
+                                                     request_decorators=request_decorators)
         self._related_model = related_model
         self._property_name = property_name
 
@@ -297,8 +304,13 @@ class CollectionPropertyResource(ToManyRelationResource):
                                                               ' Use flask-sqlalchemy and make your property return a query object')
             collection = [self._serializer.dump(item) for item in relation_list_or_query]
         else:
-            query = query_from_request(self._resource_model, self._serializer, request,
-                                            query=relation_list_or_query)
+            if self._query_callback:
+                query = self._query_callback(self._related_model, relation_list_or_query)
+                query = query_from_request(self._resource_model, self._serializer, request,
+                                                query=query)
+            else:
+                query = query_from_request(self._resource_model, self._serializer, request,
+                                                query=relation_list_or_query)
             collection = create_response_from_query(query, self._serializer)
         return collection
 
