@@ -179,7 +179,7 @@ class ToManyRelationResource(BaseModelResource):
         """
         resource_model = relation_property.prop.mapper.class_
         super(ToManyRelationResource, self).__init__(resource_model, serializer, session_getter,
-                                                     request_decorators)
+                                                     request_decorators=request_decorators)
         self._relation_property = relation_property
         self._related_model = relation_property.class_
 
@@ -280,7 +280,7 @@ class CollectionPropertyResource(ToManyRelationResource):
     def __init__(self, declarative_model, related_model, property_name, serializer,
                  session_getter, request_decorators=None):
         super(ToManyRelationResource, self).__init__(declarative_model, serializer,
-                                                     session_getter, request_decorators)
+                                                     session_getter, request_decorators=request_decorators)
         self._related_model = related_model
         self._property_name = property_name
 
