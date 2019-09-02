@@ -110,7 +110,9 @@ class BaseModelResource(BaseResource):
         self._save_model(model, method)
         return self._serializer.dump(model)
 
-
+    @property
+    def _db_session(self):
+        return self._session_getter()
 
 class ModelResource(BaseModelResource):
 
