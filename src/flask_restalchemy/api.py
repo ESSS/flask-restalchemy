@@ -45,6 +45,10 @@ class Api(object):
             keys should be 'get', 'post' or 'put').
 
         :param list methods: A list with verbs to be used, if None, default will use all
+
+        :param callback function query_callback: function that returns a query and expects a `model` as parameter that
+            should be used to create the query. The method signature should look like this:
+            query_callback(resource_model)
         """
         view_name = view_name or model.__tablename__
         if not serializer_class:
@@ -79,6 +83,10 @@ class Api(object):
             Can be used to reference this route in :class:`fields.Url` fields
 
         :param list methods: A list with verbs to be used, if None, default will use all
+
+        :param callback function query_callback: function that returns a query and expects a `model` as parameter that
+            should be used to create the query and expects a `parent_query` to be incremented with the callback query
+            function. The method signature should look like this: query_callback(resource_model, parent_query=None)
         """
         model = relation_property.prop.mapper.class_
         related_model = relation_property.class_

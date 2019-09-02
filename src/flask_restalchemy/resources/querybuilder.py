@@ -58,8 +58,8 @@ def collection_query_builder(parent_query, model_class, model_serializer, args):
         :param model_serializer:
             instance of model serializer
 
-        :param request:
-            Flask http request data
+        :param args:
+            arguments of the Flask http request
 
         :rtype: query
         :return: SQLAlchemy query instance

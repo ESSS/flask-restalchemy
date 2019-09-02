@@ -123,11 +123,10 @@ class ModelResource(BaseModelResource):
                 return NOT_FOUND_ERROR, 404
             return self._serializer.dump(model)
         else:
+            query = None
             if self._query_callback:
                 query = self._query_callback(self._resource_model)
-                query = query_from_request(self._resource_model, self._serializer, request, query=query)
-            else:
-                query = query_from_request(self._resource_model, self._serializer, request)
+            query = query_from_request(self._resource_model, self._serializer, request, query=query)
 
             return create_response_from_query(query, self._serializer)
 
