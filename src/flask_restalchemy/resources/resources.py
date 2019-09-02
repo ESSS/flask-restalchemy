@@ -6,7 +6,7 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.orm.collections import InstrumentedList
 
 from flask_restalchemy.serialization import ModelSerializer
-from .querybuilder import query_from_request
+from .querybuilder import collection_query_builder
 
 
 class BaseResource(MethodView):
@@ -73,6 +73,10 @@ class BaseModelResource(BaseResource):
         :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
             DB session may not be available on the resource initialization.
 
+        :param callable query_callback: function that returns a query and expects a `model` as parameter that
+            should be used to create the query and expects a `parent_query` to be incremented with the callback query
+            function. The method signature should look like this: query_callback(resource_model, parent_query)
+
         :param dict|list request_decorators: a list of decorators
         """
         super().__init__(request_decorators)
@@ -123,10 +127,10 @@ class ModelResource(BaseModelResource):
                 return NOT_FOUND_ERROR, 404
             return self._serializer.dump(model)
         else:
-            query = None
+            query = self._resource_model.query
             if self._query_callback:
-                query = self._query_callback(self._resource_model)
-            query = query_from_request(self._resource_model, self._serializer, request, query=query)
+                query = self._query_callback(self._resource_model, query)
+            query = collection_query_builder(query, self._resource_model, self._serializer, request.args)
 
             return create_response_from_query(query, self._serializer)
 
@@ -175,6 +179,11 @@ class ToManyRelationResource(BaseModelResource):
 
         :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
             DB session may not be available on the resource initialization.
+
+        :param callable query_callback: function that returns a query and expects a `model` as parameter that
+            should be used to create the query and expects a `parent_query` to be incremented with the callback query
+            function. The method signature should look like this: query_callback(resource_model, parent_query)
+
         """
         resource_model = relation_property.prop.mapper.class_
         super(ToManyRelationResource, self).__init__(resource_model, serializer, session_getter,
@@ -208,10 +217,10 @@ class ToManyRelationResource(BaseModelResource):
             else:
                 if self._query_callback:
                     query = self._query_callback(self._resource_model, relation_list_or_query)
-                    query = query_from_request(self._resource_model, self._serializer, request, query=query)
+                    query = collection_query_builder(query, self._resource_model, self._serializer, request.args)
                 else:
-                    query = query_from_request(self._resource_model, self._serializer, request,
-                                                    query=relation_list_or_query)
+                    query = collection_query_builder(relation_list_or_query, self._resource_model, self._serializer,
+                                                        request.args)
                 collection = create_response_from_query(query, self._serializer)
             return collection
 
@@ -305,11 +314,9 @@ class CollectionPropertyResource(ToManyRelationResource):
         else:
             if self._query_callback:
                 query = self._query_callback(self._related_model, relation_list_or_query)
-                query = query_from_request(self._resource_model, self._serializer, request,
-                                                query=query)
+                query = collection_query_builder(query, self._resource_model, self._serializer, request.args)
             else:
-                query = query_from_request(self._resource_model, self._serializer, request,
-                                                query=relation_list_or_query)
+                query = collection_query_builder(relation_list_or_query, self._resource_model, self._serializer, request.args)
             collection = create_response_from_query(query, self._serializer)
         return collection
 

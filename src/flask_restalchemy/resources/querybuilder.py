@@ -3,40 +3,6 @@ import json
 import operator
 
 
-def query_from_request(model, model_serializer, request, query=None):
-    """
-    Perform a filtered search in the database model table using query parameters in the http URL,
-    disposed on the request args.
-
-    See function apply_request_args_to_query on how to use filters
-    py:function:: apply_request_args_to_query(query, model, model_serializer, request)
-
-    It also paginate the response if a 'page' value is present in the query parameters. A 'per_page'
-    value in the query parameters defines the page length, default to 20 items.
-
-    :param class model:
-        SQLAlchemy model class representing a database resource
-
-    :param model_serializer:
-        instance of model serializer
-
-    :param request:
-        Flask http request data
-
-    :param query:
-        SQLAlchemy query instance
-
-    :rtype: list|dict
-    :return: the serialized response: "if 'page' is defined in the query params, a dict with page,
-             per page, count and results is returned, otherwise returns a list of serialized objects"
-    """
-    if not query:
-        query = model.query
-
-    query = collection_query_builder(query, model, model_serializer, request.args)
-
-    return query
-
 def collection_query_builder(parent_query, model_class, model_serializer, args):
     """
         Build a query using query parameters in the http URL, disposed on the request args.
