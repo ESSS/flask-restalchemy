@@ -25,7 +25,7 @@ class Api(object):
     def init_app(self, blueprint):
         self._blueprint = blueprint
 
-    def add_model(self, model, url=None, serializer_class=None, view_name=None, request_decorators=None, methods=None):
+    def add_model(self, model, url=None, serializer_class=None, view_name=None, request_decorators=None, methods=None, query_modifier=None):
         """
         Create API endpoints for the given SQLAlchemy declarative class.
 
@@ -45,6 +45,10 @@ class Api(object):
             keys should be 'get', 'post' or 'put').
 
         :param list methods: A list with verbs to be used, if None, default will use all
+
+        :param callable query_modifier: function that returns a query and expects a `model` as parameter that
+            should be used to create the query and expects a `parent_query` to be incremented with the callback query
+            function. The method signature should look like this: query_callback(resource_model, parent_query)
         """
         view_name = view_name or model.__tablename__
         if not serializer_class:
@@ -53,12 +57,12 @@ class Api(object):
             serializer = serializer_class(model)
         url = url if url is not None else '/' + view_name.lower()
 
-        view_init_args = (model, serializer, self.get_db_session)
+        view_init_args = (model, serializer, self.get_db_session, query_modifier)
         decorators = self._create_decorators(request_decorators)
         self.add_resource(ModelResource, url, view_name, view_init_args, decorators=decorators, methods=methods)
 
     def add_relation(self, relation_property, url_rule=None, serializer_class=None,
-                     request_decorators=None, endpoint_name=None, methods=None):
+                     request_decorators=None, endpoint_name=None, methods=None, query_modifier=None):
         """
         Create API endpoints for the given SQLAlchemy relationship.
 
@@ -79,6 +83,10 @@ class Api(object):
             Can be used to reference this route in :class:`fields.Url` fields
 
         :param list methods: A list with verbs to be used, if None, default will use all
+
+        :param callable query_modifier: function that returns a query and expects a `model` as parameter that
+            should be used to create the query and expects a `parent_query` to be incremented with the callback query
+            function. The method signature should look like this: query_callback(resource_model, parent_query)
         """
         model = relation_property.prop.mapper.class_
         related_model = relation_property.class_
@@ -95,18 +103,19 @@ class Api(object):
             url_rule = '/{}/<int:relation_id>/{}'.format(parent_endpoint, relation_property.key)
         endpoint_name = endpoint_name or url_rule
 
-        view_init_args = (relation_property, serializer, self.get_db_session)
+        view_init_args = (relation_property, serializer, self.get_db_session, query_modifier)
         self.add_resource(
             ToManyRelationResource,
             url_rule,
             view_name,
             view_init_args,
             decorators=self._create_decorators(request_decorators),
-            methods=methods
+            methods=methods,
         )
 
     def add_property(self, property_type, model, property_name, url_rule=None,
-                     serializer_class=None, request_decorators=[], endpoint_name=None, methods=None):
+                     serializer_class=None, request_decorators=[], endpoint_name=None, methods=None,
+                     query_modifier=None):
         if not serializer_class:
             serializer = self.create_default_serializer(property_type)
         else:
@@ -120,7 +129,7 @@ class Api(object):
 
         endpoint = endpoint_name or url_rule
 
-        view_init_args = (property_type, model, property_name, serializer, self.get_db_session)
+        view_init_args = (property_type, model, property_name, serializer, self.get_db_session, query_modifier)
         self.add_resource(
             CollectionPropertyResource,
             url_rule,

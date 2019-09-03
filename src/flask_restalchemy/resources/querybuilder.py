@@ -3,51 +3,7 @@ import json
 import operator
 
 
-def query_from_request(model, model_serializer, request, query=None):
-    """
-    Perform a filtered search in the database model table using query parameters in the http URL,
-    disposed on the request args.
-
-    See function apply_request_args_to_query on how to use filters
-    py:function:: apply_request_args_to_query(query, model, model_serializer, request)
-
-    It also paginate the response if a 'page' value is present in the query parameters. A 'per_page'
-    value in the query parameters defines the page length, default to 20 items.
-
-    :param class model:
-        SQLAlchemy model class representing a database resource
-
-    :param model_serializer:
-        instance of model serializer
-
-    :param request:
-        Flask http request data
-
-    :param query:
-        SQLAlchemy query instance
-
-    :rtype: list|dict
-    :return: the serialized response: "if 'page' is defined in the query params, a dict with page,
-             per page, count and results is returned, otherwise returns a list of serialized objects"
-    """
-    if not query:
-        query = model.query
-
-    query = config_query_from_request(query, model, model_serializer, request)
-
-    if 'page' in request.args:
-        data = query.paginate()
-        return {
-            'page': data.page,
-            'per_page': data.per_page,
-            'count': data.total,
-            'results': [model_serializer.dump(item) for item in data.items]
-        }
-    else:
-        data = query.all()
-        return [model_serializer.dump(item) for item in data]
-
-def config_query_from_request(query, model, model_serializer, request):
+def create_collection_query(parent_query, model_class, model_serializer, args):
     """
         Build a query using query parameters in the http URL, disposed on the request args.
         The default logical operator is AND, but you can set the OR as in the following examples:
@@ -59,17 +15,17 @@ def config_query_from_request(query, model, model_serializer, request):
         Ordered search is available using 'order_by=<col_name>'. The minus sign ("-<col_name>") could be
         used to set descending order.
 
-        :param query:
+        :param parent_query:
             SQLAlchemy query instance
 
-        :param class model:
+        :param class model_class:
             SQLAlchemy model class representing a database resource
 
         :param model_serializer:
             instance of model serializer
 
-        :param request:
-            Flask http request data
+        :param args:
+            arguments of the Flask http request
 
         :rtype: query
         :return: SQLAlchemy query instance
@@ -82,29 +38,31 @@ def config_query_from_request(query, model, model_serializer, request):
             return and_(build_filter_operator(attr, value, serializer) for attr, value in request_filter.items())
         if isinstance(request_filter, dict):
             op_name = next(iter(request_filter))
-            return get_operator(getattr(model, column_name), op_name, request_filter.get(op_name),
+            return get_operator(getattr(model_class, column_name), op_name, request_filter.get(op_name),
                                 get_field_serializer_or_none(serializer, column_name))
-        return get_operator(getattr(model, column_name), None, request_filter,
+        return get_operator(getattr(model_class, column_name), None, request_filter,
                             get_field_serializer_or_none(serializer, column_name))
 
-    if 'filter' in request.args:
-        filters = json.loads(request.args['filter'])
+    res_query = parent_query
+    if 'filter' in args:
+        filters = json.loads(args['filter'])
         for attr, value in filters.items():
-            query = query.filter(build_filter_operator(attr, value, model_serializer))
-    if 'order_by' in request.args:
-        fields = request.args['order_by'].split(',')
+            res_query = res_query.filter(build_filter_operator(attr, value, model_serializer))
+    if 'order_by' in args:
+        fields = args['order_by'].split(',')
         for field in fields:
             field_name = field.lstrip('-')
-            column = getattr(model, field_name)
+            column = getattr(model_class, field_name)
             if field[0] == '-':
                 column = desc(column)
-            query = query.order_by(column)
+            res_query = res_query.order_by(column)
     # limit and pagination have to be done after order_by
-    if 'limit' in request.args:
-        limit = request.args['limit']
-        query = query.limit(limit)
+    if 'limit' in args:
+        limit = args['limit']
+        res_query = res_query.limit(limit)
 
-    return query
+    return res_query
+
 
 # Filter operators defined on SQLAlchemy ColumnElement
 SQLA_OPERATORS = {
