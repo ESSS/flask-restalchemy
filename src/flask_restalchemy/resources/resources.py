@@ -215,12 +215,10 @@ class ToManyRelationResource(BaseModelResource):
                     'Use flask-sqlalchemy relationship with lazy="dynamic".')
                 collection = [self._serializer.dump(item) for item in relation_list_or_query]
             else:
+                query = relation_list_or_query
                 if self._query_modifier:
-                    query = self._query_modifier(relation_list_or_query, self._resource_model)
-                    query = create_collection_query(query, self._resource_model, self._serializer, request.args)
-                else:
-                    query = create_collection_query(relation_list_or_query, self._resource_model, self._serializer,
-                                                    request.args)
+                    query = self._query_modifier(query, self._resource_model)
+                query = create_collection_query(query, self._resource_model, self._serializer, request.args)
                 collection = create_response_from_query(query, self._serializer)
             return collection
 
@@ -312,11 +310,10 @@ class CollectionPropertyResource(ToManyRelationResource):
                                                               ' Use flask-sqlalchemy and make your property return a query object')
             collection = [self._serializer.dump(item) for item in relation_list_or_query]
         else:
+            query = relation_list_or_query
             if self._query_modifier:
-                query = self._query_modifier(relation_list_or_query, self._related_model)
-                query = create_collection_query(query, self._resource_model, self._serializer, request.args)
-            else:
-                query = create_collection_query(relation_list_or_query, self._resource_model, self._serializer, request.args)
+                query = self._query_modifier(query, self._related_model)
+            query = create_collection_query(query, self._resource_model, self._serializer, request.args)
             collection = create_response_from_query(query, self._serializer)
         return collection
 
