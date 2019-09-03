@@ -39,10 +39,10 @@ def create_test_sample(db_session):
 @pytest.fixture(autouse=True)
 def sample_api(flask_app):
     api = Api(flask_app)
-    api.add_model(Company, query_callback=sample_model_query)
+    api.add_model(Company, query_modifier=sample_model_query)
     api.add_model(Employee)
-    api.add_relation(Company.employees, serializer_class=EmployeeSerializer, query_callback=sample_relation_query)
-    api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer, query_callback=sample_property_query)
+    api.add_relation(Company.employees, serializer_class=EmployeeSerializer, query_modifier=sample_relation_query)
+    api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer, query_modifier=sample_property_query)
     api.add_relation(Employee.departments)
     return api
 

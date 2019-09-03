@@ -3,7 +3,7 @@ import json
 import operator
 
 
-def collection_query_builder(parent_query, model_class, model_serializer, args):
+def create_collection_query(parent_query, model_class, model_serializer, args):
     """
         Build a query using query parameters in the http URL, disposed on the request args.
         The default logical operator is AND, but you can set the OR as in the following examples:
