@@ -75,7 +75,7 @@ class BaseModelResource(BaseResource):
 
         :param callable query_modifier: function that returns a query and expects a `model` as parameter that
             should be used to create the query and expects a `parent_query` to be incremented with the callback query
-            function. The method signature should look like this: query_callback(resource_model, parent_query)
+            function. The method signature should look like this: query_callback(parent_query, resource_model)
 
         :param dict|list request_decorators: a list of decorators
         """
@@ -129,7 +129,7 @@ class ModelResource(BaseModelResource):
         else:
             query = self._resource_model.query
             if self._query_modifier:
-                query = self._query_modifier(self._resource_model, query)
+                query = self._query_modifier(query, self._resource_model)
             query = create_collection_query(query, self._resource_model, self._serializer, request.args)
 
             return create_response_from_query(query, self._serializer)
@@ -182,7 +182,7 @@ class ToManyRelationResource(BaseModelResource):
 
         :param callable query_modifier: function that returns a query and expects a `model` as parameter that
             should be used to create the query and expects a `parent_query` to be incremented with the callback query
-            function. The method signature should look like this: query_callback(resource_model, parent_query)
+            function. The method signature should look like this: query_callback(parent_query, resource_model)
 
         """
         resource_model = relation_property.prop.mapper.class_
@@ -216,7 +216,7 @@ class ToManyRelationResource(BaseModelResource):
                 collection = [self._serializer.dump(item) for item in relation_list_or_query]
             else:
                 if self._query_modifier:
-                    query = self._query_modifier(self._resource_model, relation_list_or_query)
+                    query = self._query_modifier(relation_list_or_query, self._resource_model)
                     query = create_collection_query(query, self._resource_model, self._serializer, request.args)
                 else:
                     query = create_collection_query(relation_list_or_query, self._resource_model, self._serializer,
@@ -313,7 +313,7 @@ class CollectionPropertyResource(ToManyRelationResource):
             collection = [self._serializer.dump(item) for item in relation_list_or_query]
         else:
             if self._query_modifier:
-                query = self._query_modifier(self._related_model, relation_list_or_query)
+                query = self._query_modifier(relation_list_or_query, self._related_model)
                 query = create_collection_query(query, self._resource_model, self._serializer, request.args)
             else:
                 query = create_collection_query(relation_list_or_query, self._resource_model, self._serializer, request.args)

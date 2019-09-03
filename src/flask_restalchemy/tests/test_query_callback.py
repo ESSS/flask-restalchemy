@@ -36,17 +36,13 @@ def create_test_sample(db_session):
     db_session.add_all([raynor, kerrigan, marine, tassadar, zealot, zergling])
     db_session.commit()
 
-@pytest.fixture(autouse=True)
+@pytest.fixture()
 def sample_api(flask_app):
     api = Api(flask_app)
-    api.add_model(Company, query_modifier=sample_model_query)
     api.add_model(Employee)
-    api.add_relation(Company.employees, serializer_class=EmployeeSerializer, query_modifier=sample_relation_query)
-    api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer, query_modifier=sample_property_query)
-    api.add_relation(Employee.departments)
     return api
 
-def sample_relation_query(model, parent_query=None):
+def sample_relation_query(parent_query, model):
     '''
     Query callback to get the collection of all Employee that has Department 'Basic'
     :param model:
@@ -60,7 +56,7 @@ def sample_relation_query(model, parent_query=None):
         query = model.query.filter(model.id.in_(subquery))
     return query
 
-def sample_model_query(model, parent_query=None):
+def sample_model_query(parent_query, model):
     '''
     Query callback to get the collection of all Companies only has 'Basic'
     :param model:
@@ -68,14 +64,14 @@ def sample_model_query(model, parent_query=None):
     :return:
     '''
     all_heroes_subquery = db.session.query(employee_department.c.employee_id).filter(employee_department.c.department_id == 200).subquery()
-    all_companies_basic_only_subquery = db.session.query(Employee.company_id).filter(Employee.id.in_(all_heroes_subquery)).subquery()
+    all_companies_heroes_only_subquery = db.session.query(Employee.company_id).filter(Employee.id.in_(all_heroes_subquery)).subquery()
     if parent_query:
-        query = parent_query.filter(~model.id.in_(all_companies_basic_only_subquery)) # ~ indicates NOT IN
+        query = parent_query.filter(~model.id.in_(all_companies_heroes_only_subquery)) # ~ indicates NOT IN
     else:
-        query = model.query.filter(~model.id.in_(all_companies_basic_only_subquery))
+        query = model.query.filter(~model.id.in_(all_companies_heroes_only_subquery))
     return query
 
-def sample_property_query(model, parent_query=None):
+def sample_property_query(parent_query, model):
     '''
     Query callback to get the collection of colleagues but not it self
     :param model:
@@ -89,28 +85,35 @@ def sample_property_query(model, parent_query=None):
         query = model.query.filter_by(model.id!=self_id)
     return query
 
-def test_get_collection_relation_terrans(client, data_regression):
+def test_get_collection_relation_terrans(client, sample_api, data_regression):
+    sample_api.add_model(Company)
+    sample_api.add_relation(Company.employees, serializer_class=EmployeeSerializer, query_modifier=sample_relation_query)
     resp = client.get('/company/3/employees')
     assert resp.status_code == 200
     assert len(resp.json) == 2
     data = resp.get_json()
     data_regression.check(data)
 
-def test_get_collection_relation_protoss(client, data_regression):
+def test_get_collection_relation_protoss(client, sample_api, data_regression):
+    sample_api.add_model(Company)
+    sample_api.add_relation(Company.employees, serializer_class=EmployeeSerializer, query_modifier=sample_relation_query)
     resp = client.get('/company/1/employees')
     assert resp.status_code == 200
     assert len(resp.json) == 1
     data = resp.get_json()
     data_regression.check(data)
 
-def test_get_collection_model(client, data_regression):
+def test_get_collection_model(client, sample_api, data_regression):
+    sample_api.add_model(Company, query_modifier=sample_model_query)
     resp = client.get('/company')
     assert resp.status_code == 200
     assert len(resp.json) == 1
     data = resp.get_json()
     data_regression.check(data)
 
-def test_get_collection_property(client, data_regression):
+def test_get_collection_property(client, sample_api, data_regression):
+    sample_api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer,
+                     query_modifier=sample_property_query)
     resp = client.get('/employee/11/colleagues')
     assert resp.status_code == 200
     assert len(resp.json) == 2
