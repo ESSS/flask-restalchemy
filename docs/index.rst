@@ -90,4 +90,3 @@ In the above example, `secret_name` property will not be exposed on a GET, but c
 .. _conda-forge: https://conda-forge.org
 .. _flask-sqlalchemy: http://lask-sqlalchemy.pocoo.org
 .. _SQLAlchemy: http://www.sqlalchemy.org
-
