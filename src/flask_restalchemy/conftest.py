@@ -13,10 +13,10 @@ def client(flask_app, db_session):
 
 @pytest.fixture()
 def flask_app():
-    app = Flask('flask_sqlapi_sample')
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    app.config['PROPAGATE_EXCEPTIONS'] = True
+    app = Flask("flask_sqlapi_sample")
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    app.config["PROPAGATE_EXCEPTIONS"] = True
     db.init_app(app)
     with app.app_context():
         yield app

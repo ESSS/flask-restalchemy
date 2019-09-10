@@ -16,12 +16,12 @@ class EmployeeSerializer(ModelSerializer):
 
 @pytest.fixture(autouse=True)
 def create_test_sample(db_session):
-    protoss = Company(id=1, name='Protoss')
-    terrans = Company(id=3, name='Terrans')
-    raynor = Employee(id=9, firstname='Jim', lastname='Raynor', company=terrans)
-    kerrigan = Employee(id=3, firstname='Sarah', lastname='Kerrigan', company=terrans)
-    dept1 = Department(name='Marines')
-    dept2 = Department(name='Heroes')
+    protoss = Company(id=1, name="Protoss")
+    terrans = Company(id=3, name="Terrans")
+    raynor = Employee(id=9, firstname="Jim", lastname="Raynor", company=terrans)
+    kerrigan = Employee(id=3, firstname="Sarah", lastname="Kerrigan", company=terrans)
+    dept1 = Department(name="Marines")
+    dept2 = Department(name="Heroes")
     raynor.departments.append(dept1)
     raynor.departments.append(dept2)
 
@@ -40,13 +40,15 @@ def sample_api(flask_app):
     api.add_model(Company)
     api.add_model(Employee)
     api.add_relation(Company.employees, serializer_class=EmployeeSerializer)
-    api.add_property(Employee, Employee, 'colleagues', serializer_class=EmployeeSerializer)
+    api.add_property(
+        Employee, Employee, "colleagues", serializer_class=EmployeeSerializer
+    )
     api.add_relation(Employee.departments)
     return api
 
 
 def test_get_collection(client, data_regression):
-    resp = client.get('/company/3/employees')
+    resp = client.get("/company/3/employees")
     assert resp.status_code == 200
     assert resp.is_json
     data = resp.get_json()
@@ -54,103 +56,106 @@ def test_get_collection(client, data_regression):
 
 
 def test_get_item(client, data_regression):
-    resp = client.get('/company/3/employees/3')
+    resp = client.get("/company/3/employees/3")
     assert resp.status_code == 200
     assert resp.is_json
     data = resp.get_json()
     data_regression.check(data)
 
-    assert client.get('/company/5/employees/999').status_code == 404
+    assert client.get("/company/5/employees/999").status_code == 404
 
 
 def test_post_item(client):
     post_data = {
-        'firstname': 'Tychus',
-        'lastname': 'Findlay',
-        'admission': '2002-02-02T00:00:00+0300',
+        "firstname": "Tychus",
+        "lastname": "Findlay",
+        "admission": "2002-02-02T00:00:00+0300",
     }
-    resp = client.post('/company/3/employees', data=post_data)
+    resp = client.post("/company/3/employees", data=post_data)
     assert resp.status_code == 201
     assert resp.is_json
-    saved_id = resp.get_json()['id']
+    saved_id = resp.get_json()["id"]
 
     new_employee = Employee.query.get(saved_id)
-    assert new_employee.firstname == 'Tychus'
+    assert new_employee.firstname == "Tychus"
     assert new_employee.company.id == 3
 
 
 def test_put_item(client):
-    resp = client.put('/company/3/employees/3', data={'lastname': 'K.'})
+    resp = client.put("/company/3/employees/3", data={"lastname": "K."})
     assert resp.status_code == 200
 
     sarah = Employee.query.filter(Employee.firstname == "Sarah").one()
-    assert sarah.lastname == 'K.'
+    assert sarah.lastname == "K."
 
 
 def test_delete_item(client):
     company = Company.query.get(3)
-    assert [emp.firstname for emp in company.employees] == ['Sarah', 'Jim']
+    assert [emp.firstname for emp in company.employees] == ["Sarah", "Jim"]
 
-    resp = client.delete('/company/3/employees/9')
+    resp = client.delete("/company/3/employees/9")
     assert resp.status_code == 204
-    assert [emp.firstname for emp in company.employees] == ['Sarah']
+    assert [emp.firstname for emp in company.employees] == ["Sarah"]
     # Make sure that delete just drop the relation, and do not delete the target objects itself
-    assert Employee.query.filter_by(firstname='Jim').first()
+    assert Employee.query.filter_by(firstname="Jim").first()
 
-    assert client.delete('/company/5/employees/999').status_code == 404
+    assert client.delete("/company/5/employees/999").status_code == 404
 
 
 def test_post_append_existent(client):
-    resp = client.post('/employee', data={'firstname': 'Tychus', 'lastname': 'Findlay'})
+    resp = client.post("/employee", data={"firstname": "Tychus", "lastname": "Findlay"})
     assert resp.status_code == 201
     data = resp.get_json()
-    empl_id = data['id']
+    empl_id = data["id"]
     thychus = Employee.query.get(empl_id)
     assert thychus.company_name is None
 
-    resp = client.post('/company/3/employees', data={'id': empl_id})
+    resp = client.post("/company/3/employees", data={"id": empl_id})
     assert resp.status_code == 200
 
     thychus = Employee.query.get(empl_id)
-    assert thychus.company_name == 'Terrans'
+    assert thychus.company_name == "Terrans"
 
-    resp = client.post('/company/3/employees', data={'id': 1000})
+    resp = client.post("/company/3/employees", data={"id": 1000})
     assert resp.status_code == 404
 
 
 def test_property(client, data_regression):
-    resp = client.get('/employee/9/colleagues')
+    resp = client.get("/employee/9/colleagues")
     assert resp.status_code == 200
     response_data = resp.get_json()
     data_regression.check(response_data)
 
-    resp = client.post('/employee/9/colleagues')
+    resp = client.post("/employee/9/colleagues")
     assert resp.status_code == 405
 
 
 def test_property_pagination(client):
 
     for i in range(20):
-        client.post('/company/3/employees', data={'firstname': 'Jimmy {}'.format(i)})
+        client.post("/company/3/employees", data={"firstname": "Jimmy {}".format(i)})
 
-    response = client.get('/employee/9/colleagues?order_by=id&limit=5')
+    response = client.get("/employee/9/colleagues?order_by=id&limit=5")
     assert response.status_code == 200
     response_data = response.get_json()
     assert len(response_data) == 5
-    assert response_data[0]['firstname'] == 'Sarah'
+    assert response_data[0]["firstname"] == "Sarah"
 
     response = client.get(
-        '/employee/9/colleagues?filter={}'.format(json.dumps({"firstname": {"eq": "Sarah"}})))
+        "/employee/9/colleagues?filter={}".format(
+            json.dumps({"firstname": {"eq": "Sarah"}})
+        )
+    )
     assert response.status_code == 200
     response_data = response.get_json()
     assert len(response_data) == 1
-    assert 'firstname' in response_data[0]
-    assert response_data[0]['firstname'] == 'Sarah'
+    assert "firstname" in response_data[0]
+    assert response_data[0]["firstname"] == "Sarah"
 
-    response = client.get('/employee/9/colleagues?page=1&per_page=10')
+    response = client.get("/employee/9/colleagues?page=1&per_page=10")
     assert response.status_code == 200
     response_data = response.get_json()
-    assert len(response_data.get('results')) == 10
+    assert len(response_data.get("results")) == 10
 
 
 def test_delete_on_relation_with_secondary(client):
@@ -162,11 +167,11 @@ def test_delete_on_relation_with_secondary(client):
     assert jim is not None
     assert dep not in sarah.departments
 
-    resp = client.get('/employee/3/departments')
+    resp = client.get("/employee/3/departments")
     assert resp.status_code == 200
 
-    resp = client.delete('/employee/3/departments/' + str(dep.id))
+    resp = client.delete("/employee/3/departments/" + str(dep.id))
     assert resp.status_code == 404
 
-    resp = client.delete('/employee/9/departments/'+str(dep.id))
+    resp = client.delete("/employee/9/departments/" + str(dep.id))
     assert resp.status_code == 204

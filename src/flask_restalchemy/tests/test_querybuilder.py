@@ -27,22 +27,22 @@ def init_test_data(flask_app, db_session):
 
 
 def test_order(client):
-    response = client.get('/company?order_by=name')
+    response = client.get("/company?order_by=name")
     data_list = response.get_json()
-    assert data_list[0]['name'] == 'Alvin'
-    assert data_list[-1]['name'] == 'Von'
+    assert data_list[0]["name"] == "Alvin"
+    assert data_list[-1]["name"] == "Von"
 
-    response = client.get('/company?order_by=-name')
+    response = client.get("/company?order_by=-name")
     data_list = response.get_json()
-    assert data_list[0]['name'] == 'Von'
+    assert data_list[0]["name"] == "Von"
 
 
 def test_filter(client):
-    response = client.get('/company')
+    response = client.get("/company")
     data_list = response.get_json()
     assert len(data_list) == 20
 
-    response = client.get('/company?limit=5')
+    response = client.get("/company?limit=5")
     data_list = response.get_json()
     assert len(data_list) == 5
 
@@ -54,7 +54,9 @@ def test_filter(client):
     data_list = response.get_json()
     assert len(data_list) == 1
 
-    response = client.get('/company?filter={"$or": {"name": "Alvin", "location": "pace"} }')
+    response = client.get(
+        '/company?filter={"$or": {"name": "Alvin", "location": "pace"} }'
+    )
     data_list = response.get_json()
     assert len(data_list) == 2
 
@@ -79,51 +81,75 @@ def test_filter(client):
     data_list = response.get_json()
     assert len(data_list) == 2
 
-    with pytest.raises(ValueError, match='Unknown operator unknown_operator'):
-        client.get('/company?filter={}'.format(json.dumps({"name": {"unknown_operator": 'Terr'}})))
+    with pytest.raises(ValueError, match="Unknown operator unknown_operator"):
+        client.get(
+            "/company?filter={}".format(
+                json.dumps({"name": {"unknown_operator": "Terr"}})
+            )
+        )
 
 
 def test_pagination(client):
-    response = client.get('/company?page=1&per_page=50')
+    response = client.get("/company?page=1&per_page=50")
     data_list = response.get_json()
-    assert len(data_list.get('results')) == 20
+    assert len(data_list.get("results")) == 20
 
-    response = client.get('/company?page=1&per_page=5')
+    response = client.get("/company?page=1&per_page=5")
     data_list = response.get_json()
-    assert len(data_list.get('results')) == 5
+    assert len(data_list.get("results")) == 5
 
-    response = client.get('/company?page=4&per_page=6')
+    response = client.get("/company?page=4&per_page=6")
     data_list = response.get_json()
-    assert len(data_list.get('results')) == 2
+    assert len(data_list.get("results")) == 2
 
 
 def test_relations_pagination(client):
-    response = client.post('/company', data={'name': 'Terrans 1'})
+    response = client.post("/company", data={"name": "Terrans 1"})
     assert response.status_code == 201
-    company_id = response.get_json()['id']
+    company_id = response.get_json()["id"]
 
     for i in range(20):
-        client.post('/company/{}/employees'.format(company_id),
-                    data={'firstname': 'Jimmy {}'.format(i)})
+        client.post(
+            "/company/{}/employees".format(company_id),
+            data={"firstname": "Jimmy {}".format(i)},
+        )
 
-    response = client.get('/company/{}/employees?filter={}'.format(company_id, json.dumps(
-        {"firstname": {"eq": "Jimmy 1"}})))
+    response = client.get(
+        "/company/{}/employees?filter={}".format(
+            company_id, json.dumps({"firstname": {"eq": "Jimmy 1"}})
+        )
+    )
     assert response.status_code == 200
     data_list = response.get_json()
     assert len(data_list) == 1
-    assert 'firstname' in data_list[0]
-    assert data_list[0]['firstname'] == 'Jimmy 1'
+    assert "firstname" in data_list[0]
+    assert data_list[0]["firstname"] == "Jimmy 1"
 
-    response = client.get('/company/{}/employees?page=1&per_page=5'.format(company_id))
+    response = client.get("/company/{}/employees?page=1&per_page=5".format(company_id))
     assert response.status_code == 200
     data_list = response.get_json()
-    assert len(data_list.get('results')) == 5
+    assert len(data_list.get("results")) == 5
 
 
-CLIENTS = [('Tyson', 'syncretise'), ('Shandi', 'pace'), ('Lurlene', 'meteor'),
-    ('Cornelius', 'revengefulness'), ('Steven', 'monosodium'), ('Von', 'outswirl'),
-    ('Lucille', 'alcatraz'), ('Shawanda', 'genotypic'), ('Erna', 'preornamental'),
-    ('Gonzalo', 'unromanticized'), ('Glory', 'cowtail'), ('Keren', 'vilify'), ('Alvin', 'genesis'),
-    ('Melita', 'numberless'), ('Lakia', 'irretentive'), ('Joie', 'peptonizer'),
-    ('Jacqulyn', 'underbidding'), ('Julius', 'alcmene'), ('Coretta', 'furcated'),
-    ('Laverna', 'mastaba'), ]
+CLIENTS = [
+    ("Tyson", "syncretise"),
+    ("Shandi", "pace"),
+    ("Lurlene", "meteor"),
+    ("Cornelius", "revengefulness"),
+    ("Steven", "monosodium"),
+    ("Von", "outswirl"),
+    ("Lucille", "alcatraz"),
+    ("Shawanda", "genotypic"),
+    ("Erna", "preornamental"),
+    ("Gonzalo", "unromanticized"),
+    ("Glory", "cowtail"),
+    ("Keren", "vilify"),
+    ("Alvin", "genesis"),
+    ("Melita", "numberless"),
+    ("Lakia", "irretentive"),
+    ("Joie", "peptonizer"),
+    ("Jacqulyn", "underbidding"),
+    ("Julius", "alcmene"),
+    ("Coretta", "furcated"),
+    ("Laverna", "mastaba"),
+]
