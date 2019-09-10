@@ -91,7 +91,7 @@ class BaseModelResource(BaseResource):
         self._serializer.strict = True
         assert isinstance(
             self._serializer, ModelSerializer
-        ), "Invalid serializer instance: {}".format(serializer)
+        ), f"Invalid serializer instance: {serializer}"
         self._session_getter = session_getter
         self._query_modifier = query_modifier
 
@@ -202,7 +202,7 @@ class ToManyRelationResource(BaseModelResource):
 
         """
         resource_model = relation_property.prop.mapper.class_
-        super(ToManyRelationResource, self).__init__(
+        super().__init__(
             resource_model,
             serializer,
             session_getter,

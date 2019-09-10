@@ -110,8 +110,7 @@ def test_relations_pagination(client):
 
     for i in range(20):
         client.post(
-            "/company/{}/employees".format(company_id),
-            data={"firstname": "Jimmy {}".format(i)},
+            f"/company/{company_id}/employees", data={"firstname": f"Jimmy {i}"}
         )
 
     response = client.get(
@@ -125,7 +124,7 @@ def test_relations_pagination(client):
     assert "firstname" in data_list[0]
     assert data_list[0]["firstname"] == "Jimmy 1"
 
-    response = client.get("/company/{}/employees?page=1&per_page=5".format(company_id))
+    response = client.get(f"/company/{company_id}/employees?page=1&per_page=5")
     assert response.status_code == 200
     data_list = response.get_json()
     assert len(data_list.get("results")) == 5

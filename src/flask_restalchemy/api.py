@@ -12,7 +12,7 @@ from .resources.resources import (
 )
 
 
-class Api(object):
+class Api:
     def __init__(self, blueprint=None, request_decorators=None):
         """
         :param (Flask|Blueprint) blueprint: Flask application or Blueprint
@@ -118,7 +118,7 @@ class Api(object):
         """
         model = relation_property.prop.mapper.class_
         related_model = relation_property.class_
-        view_name = "{}_{}".format(model.__name__, related_model.__name__).lower()
+        view_name = f"{model.__name__}_{related_model.__name__}".lower()
 
         if not serializer_class:
             serializer = self.create_default_serializer(model)
@@ -164,7 +164,7 @@ class Api(object):
             serializer = self.create_default_serializer(property_type)
         else:
             serializer = serializer_class(property_type)
-        view_name = "{}_{}".format(model.__name__, property_name).lower()
+        view_name = f"{model.__name__}_{property_name}".lower()
         if url_rule:
             assert "<int:relation_id>" in url_rule
         else:
@@ -239,7 +239,7 @@ class Api(object):
             )
             app.add_url_rule(url, view_func=view_func, methods=["POST"])
             app.add_url_rule(
-                "%s/<%s:%s>" % (url, pk_type, pk),
+                f"{url}/<{pk_type}:{pk}>",
                 view_func=view_func,
                 methods=["GET", "PUT", "DELETE"],
             )
@@ -254,9 +254,7 @@ class Api(object):
                 app.add_url_rule(url, view_func=view_func, methods=["POST"])
             if methods:
                 app.add_url_rule(
-                    "%s/<%s:%s>" % (url, pk_type, pk),
-                    view_func=view_func,
-                    methods=methods,
+                    f"{url}/<{pk_type}:{pk}>", view_func=view_func, methods=methods
                 )
 
     def add_url_rule(

@@ -133,7 +133,7 @@ def test_property(client, data_regression):
 def test_property_pagination(client):
 
     for i in range(20):
-        client.post("/company/3/employees", data={"firstname": "Jimmy {}".format(i)})
+        client.post("/company/3/employees", data={"firstname": f"Jimmy {i}"})
 
     response = client.get("/employee/9/colleagues?order_by=id&limit=5")
     assert response.status_code == 200

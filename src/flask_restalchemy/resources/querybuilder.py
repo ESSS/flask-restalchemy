@@ -138,7 +138,7 @@ def get_operator(column, op_name, value, serializer):
             )
         return getattr(column, op)(parse_value(value, serializer))
     else:
-        raise ValueError("Unknown operator {}".format(op_name))
+        raise ValueError(f"Unknown operator {op_name}")
 
 
 def get_field_serializer_or_none(serializer, field_name):
