@@ -12,11 +12,15 @@ default, making the definition of *Schema* classes optional.
 Installation
 ------------
 
-Install Flask-RESTAlchemy with `pip` ::
+Install Flask-RESTAlchemy with `pip`:
+
+.. code-block:: shell
 
     pip install flask-restalchemy
 
-or `conda` (package available on `conda-forge`_) ::
+or `conda` (package available on `conda-forge`_):
+
+.. code-block:: shell
 
     conda install flask-restalchemy -c conda-forge
 
@@ -24,7 +28,9 @@ or `conda` (package available on `conda-forge`_) ::
 Minimal App
 -----------
 
-Let's define a very simple *SQLAlchemy* model using `flask-sqlalchemy`_: ::
+Let's define a very simple *SQLAlchemy* model using `flask-sqlalchemy`_:
+
+.. code-block:: python
 
     from flask_sqlalchemy import SQLAlchemy
     from sqlalchemy import Column, String, Integer
@@ -37,7 +43,9 @@ Let's define a very simple *SQLAlchemy* model using `flask-sqlalchemy`_: ::
         secret_name = Column(String)
 
 Expose SQLAlchemy models in a very simple way is one of the aims of Flask-RESTAlchemy. Just instantiate an `Api` object
-and use `Api.add_model` to expose a model through an endpoint: ::
+and use `Api.add_model` to expose a model through an endpoint:
+
+.. code-block:: python
 
     from flask import Flask
     from flask_restalchemy import Api
@@ -60,7 +68,9 @@ and use `Api.add_model` to expose a model through an endpoint: ::
         app.run()
 
 `Api.add_model` creates methods GET and POST for the `Heroes` collection at  ``/heroes`` and methods GET, PUT and DELETE
-for ``/heroes/:id`` Let's see it in action: ::
+for ``/heroes/:id`` Let's see it in action:
+
+.. code-block:: shell
 
     $ python app.py
      * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
@@ -76,7 +86,9 @@ for ``/heroes/:id`` Let's see it in action: ::
         secret_name: "",
     }
 
-Serializers could be used to override the default serialization of models ::
+Serializers could be used to override the default serialization of models:
+
+.. code-block:: python
 
     class HeroSerializer(ModelSerializer):
 
