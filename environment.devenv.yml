@@ -3,7 +3,7 @@ name: flask-restalchemy
 dependencies:
   - python>=3.5
   - flask>=1.0
-  - sqlalchemy>=1.1
+  - sqlalchemy>=1.3
   - sqlalchemy-utils>=0.30
   - flask-sqlalchemy>=2.3.0
   - pytest
