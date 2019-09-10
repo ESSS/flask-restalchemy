@@ -2,6 +2,7 @@
 
 [![travis-ci](https://api.travis-ci.org/ESSS/flask-restalchemy.svg?branch=master)](https://travis-ci.org/ESSS/flask-restalchemy)
 [![codecov](https://codecov.io/gh/ESSS/flask-restalchemy/branch/master/graph/badge.svg)](https://codecov.io/gh/ESSS/flask-restalchemy)
+[![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
 A Flask extension to build REST APIs. It dismiss the need of building *Schema* classes,
