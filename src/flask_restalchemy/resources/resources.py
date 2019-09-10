@@ -10,13 +10,12 @@ from .querybuilder import create_collection_query
 
 
 class BaseResource(MethodView):
-
     def __init__(self, request_decorators=None):
         if not request_decorators:
             return
         for verb, decorator_list in request_decorators.items():
             for decorator in decorator_list:
-                if verb == 'ALL':
+                if verb == "ALL":
                     self.dispatch_request = decorator(self.dispatch_request)
                 else:
                     verb_method_name = verb.lower()
@@ -43,6 +42,7 @@ class ViewFunctionResource(BaseResource):
 
     :param dict request_decorators: dictionary of decorators for the function
     """
+
     def __init__(self, func, request_decorators=None):
         super().__init__(request_decorators)
         self.func = func
@@ -61,8 +61,14 @@ class ViewFunctionResource(BaseResource):
 
 
 class BaseModelResource(BaseResource):
-
-    def __init__(self, declarative_model, serializer, session_getter, query_modifier=None, request_decorators=None):
+    def __init__(
+        self,
+        declarative_model,
+        serializer,
+        session_getter,
+        query_modifier=None,
+        request_decorators=None,
+    ):
         """
         The Base class for ORM resources
 
@@ -83,34 +89,35 @@ class BaseModelResource(BaseResource):
         self._resource_model = declarative_model
         self._serializer = serializer
         self._serializer.strict = True
-        assert isinstance(self._serializer,
-                          ModelSerializer), 'Invalid serializer instance: {}'.format(serializer)
+        assert isinstance(
+            self._serializer, ModelSerializer
+        ), f"Invalid serializer instance: {serializer}"
         self._session_getter = session_getter
-        self._query_modifier =  query_modifier
-
+        self._query_modifier = query_modifier
 
     def _save_model(self, model, method):
         session = self._session_getter()
         session.add(model)
         # run pre commit hooks
-        if method == 'POST':
+        if method == "POST":
             self._serializer.before_post_commit(model, session)
-        elif method == 'PUT':
+        elif method == "PUT":
             self._serializer.before_put_commit(model, session)
 
         session.commit()
 
         # run post commit hooks
-        if method == 'POST':
+        if method == "POST":
             self._serializer.after_post_commit(model, session)
-        elif method == 'PUT':
+        elif method == "PUT":
             self._serializer.after_put_commit(model, session)
 
-
     def _save_serialized(self, serialized_data, existing_model=None):
-        model = self._serializer.load(serialized_data, existing_model, self._session_getter())
+        model = self._serializer.load(
+            serialized_data, existing_model, self._session_getter()
+        )
 
-        method = 'PUT' if existing_model else 'POST'
+        method = "PUT" if existing_model else "POST"
         self._save_model(model, method)
         return self._serializer.dump(model)
 
@@ -118,8 +125,8 @@ class BaseModelResource(BaseResource):
     def _db_session(self):
         return self._session_getter()
 
-class ModelResource(BaseModelResource):
 
+class ModelResource(BaseModelResource):
     def get(self, id=None):
         if id is not None:
             model = self._resource_model.query.get(id)
@@ -130,7 +137,9 @@ class ModelResource(BaseModelResource):
             query = self._resource_model.query
             if self._query_modifier:
                 query = self._query_modifier(query, self._resource_model)
-            query = create_collection_query(query, self._resource_model, self._serializer, request.args)
+            query = create_collection_query(
+                query, self._resource_model, self._serializer, request.args
+            )
 
             return create_response_from_query(query, self._serializer)
 
@@ -158,7 +167,7 @@ class ModelResource(BaseModelResource):
         session.delete(model)
         session.flush()
         session.commit()
-        return '', 204
+        return "", 204
 
 
 class ToManyRelationResource(BaseModelResource):
@@ -168,7 +177,14 @@ class ToManyRelationResource(BaseModelResource):
     element of the parent model.
     """
 
-    def __init__(self, relation_property, serializer, session_getter, query_modifier=None, request_decorators=None):
+    def __init__(
+        self,
+        relation_property,
+        serializer,
+        session_getter,
+        query_modifier=None,
+        request_decorators=None,
+    ):
         """
         The Base class for ORM resources
 
@@ -186,8 +202,13 @@ class ToManyRelationResource(BaseModelResource):
 
         """
         resource_model = relation_property.prop.mapper.class_
-        super(ToManyRelationResource, self).__init__(resource_model, serializer, session_getter,
-                                                     query_modifier=query_modifier, request_decorators=request_decorators)
+        super().__init__(
+            resource_model,
+            serializer,
+            session_getter,
+            query_modifier=query_modifier,
+            request_decorators=request_decorators,
+        )
         self._relation_property = relation_property
         self._related_model = relation_property.class_
 
@@ -201,24 +222,33 @@ class ToManyRelationResource(BaseModelResource):
             session = self._db_session
             # using options(load_only('id')) avoid unintended subquerying, as all we want is
             # check if the element exists
-            related_obj = session.query(self._related_model).options(load_only("id")).get(
-                relation_id)
+            related_obj = (
+                session.query(self._related_model)
+                .options(load_only("id"))
+                .get(relation_id)
+            )
             if related_obj is None:
                 return NOT_FOUND_ERROR, 404
 
             # TODO: Is there a more efficient way than using getattr?
             relation_list_or_query = getattr(related_obj, self._relation_property.key)
             if isinstance(relation_list_or_query, InstrumentedList) or not hasattr(
-                    relation_list_or_query, 'paginate'):
+                relation_list_or_query, "paginate"
+            ):
                 warnings.warn(
-                    'Warnning: relationship does not support pagination nor filter.'
-                    'Use flask-sqlalchemy relationship with lazy="dynamic".')
-                collection = [self._serializer.dump(item) for item in relation_list_or_query]
+                    "Warnning: relationship does not support pagination nor filter."
+                    'Use flask-sqlalchemy relationship with lazy="dynamic".'
+                )
+                collection = [
+                    self._serializer.dump(item) for item in relation_list_or_query
+                ]
             else:
                 query = relation_list_or_query
                 if self._query_modifier:
                     query = self._query_modifier(query, self._resource_model)
-                query = create_collection_query(query, self._resource_model, self._serializer, request.args)
+                query = create_collection_query(
+                    query, self._resource_model, self._serializer, request.args
+                )
                 collection = create_response_from_query(query, self._serializer)
             return collection
 
@@ -229,7 +259,7 @@ class ToManyRelationResource(BaseModelResource):
             return NOT_FOUND_ERROR, 404
         collection = getattr(related_obj, self._relation_property.key)
         data_dict = load_request_json()
-        resource_id = data_dict.get('id', None)
+        resource_id = data_dict.get("id", None)
 
         if resource_id is not None:
             model = session.query(self._resource_model).get(resource_id)
@@ -264,7 +294,7 @@ class ToManyRelationResource(BaseModelResource):
         collection = getattr(related_obj, self._relation_property.key)
         collection.remove(requested_obj)
         session.commit()
-        return '', 204
+        return "", 204
 
     def _query_related_obj(self, relation_id, id):
         """
@@ -276,8 +306,15 @@ class ToManyRelationResource(BaseModelResource):
         """
 
         # This checks if there is a parent with the related child on its relation property
-        related = self._db_session.query(self._related_model).options(load_only("id")).filter(
-            self._related_model.id == relation_id, self._relation_property.any(id=id)).one_or_none()
+        related = (
+            self._db_session.query(self._related_model)
+            .options(load_only("id"))
+            .filter(
+                self._related_model.id == relation_id,
+                self._relation_property.any(id=id),
+            )
+            .one_or_none()
+        )
 
         if related is None:
             return None
@@ -286,14 +323,23 @@ class ToManyRelationResource(BaseModelResource):
 
 
 class CollectionPropertyResource(ToManyRelationResource):
-
-    def __init__(self, declarative_model, related_model, property_name, serializer,
-                 session_getter, query_modifier=None, request_decorators=None):
-        super(ToManyRelationResource, self).__init__(declarative_model,
-                                                     serializer,
-                                                     session_getter,
-                                                     query_modifier=query_modifier,
-                                                     request_decorators=request_decorators)
+    def __init__(
+        self,
+        declarative_model,
+        related_model,
+        property_name,
+        serializer,
+        session_getter,
+        query_modifier=None,
+        request_decorators=None,
+    ):
+        super(ToManyRelationResource, self).__init__(
+            declarative_model,
+            serializer,
+            session_getter,
+            query_modifier=query_modifier,
+            request_decorators=request_decorators,
+        )
         self._related_model = related_model
         self._property_name = property_name
 
@@ -304,21 +350,29 @@ class CollectionPropertyResource(ToManyRelationResource):
             return NOT_FOUND_ERROR, 404
         relation_list_or_query = getattr(related_obj, self._property_name)
         if isinstance(relation_list_or_query, InstrumentedList) or not hasattr(
-                relation_list_or_query, 'paginate'):
+            relation_list_or_query, "paginate"
+        ):
             warnings.warn(
-                'Warnning: property ' + self._property_name + ' does not support pagination nor filter.'
-                                                              ' Use flask-sqlalchemy and make your property return a query object')
-            collection = [self._serializer.dump(item) for item in relation_list_or_query]
+                "Warnning: property "
+                + self._property_name
+                + " does not support pagination nor filter."
+                " Use flask-sqlalchemy and make your property return a query object"
+            )
+            collection = [
+                self._serializer.dump(item) for item in relation_list_or_query
+            ]
         else:
             query = relation_list_or_query
             if self._query_modifier:
                 query = self._query_modifier(query, self._related_model)
-            query = create_collection_query(query, self._resource_model, self._serializer, request.args)
+            query = create_collection_query(
+                query, self._resource_model, self._serializer, request.args
+            )
             collection = create_response_from_query(query, self._serializer)
         return collection
 
     def post(self, relation_id):
-        return 'POST not allowed for property resources', 405
+        return "POST not allowed for property resources", 405
 
 
 def load_request_json():
@@ -328,7 +382,7 @@ def load_request_json():
     :rtype: dict
     """
     if request.data:
-        return json.loads(request.data.decode('utf-8'))
+        return json.loads(request.data.decode("utf-8"))
     else:
         return request.form.to_dict()
 
@@ -359,16 +413,17 @@ def unpack(value):
 
 
 def create_response_from_query(query, serializer):
-    if 'page' in request.args:
+    if "page" in request.args:
         data = query.paginate()
         return {
-            'page': data.page,
-            'per_page': data.per_page,
-            'count': data.total,
-            'results': [serializer.dump(item) for item in data.items]
+            "page": data.page,
+            "per_page": data.per_page,
+            "count": data.total,
+            "results": [serializer.dump(item) for item in data.items],
         }
     else:
         data = query.all()
         return [serializer.dump(item) for item in data]
 
-NOT_FOUND_ERROR = 'Resource not found in the database!'
+
+NOT_FOUND_ERROR = "Resource not found in the database!"

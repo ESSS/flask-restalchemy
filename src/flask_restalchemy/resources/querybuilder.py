@@ -32,33 +32,49 @@ def create_collection_query(parent_query, model_class, model_serializer, args):
         """
 
     def build_filter_operator(column_name, request_filter, serializer):
-        if column_name == '$or':
-            return or_(build_filter_operator(attr, value, serializer) for attr, value in request_filter.items())
-        elif column_name == '$and':
-            return and_(build_filter_operator(attr, value, serializer) for attr, value in request_filter.items())
+        if column_name == "$or":
+            return or_(
+                build_filter_operator(attr, value, serializer)
+                for attr, value in request_filter.items()
+            )
+        elif column_name == "$and":
+            return and_(
+                build_filter_operator(attr, value, serializer)
+                for attr, value in request_filter.items()
+            )
         if isinstance(request_filter, dict):
             op_name = next(iter(request_filter))
-            return get_operator(getattr(model_class, column_name), op_name, request_filter.get(op_name),
-                                get_field_serializer_or_none(serializer, column_name))
-        return get_operator(getattr(model_class, column_name), None, request_filter,
-                            get_field_serializer_or_none(serializer, column_name))
+            return get_operator(
+                getattr(model_class, column_name),
+                op_name,
+                request_filter.get(op_name),
+                get_field_serializer_or_none(serializer, column_name),
+            )
+        return get_operator(
+            getattr(model_class, column_name),
+            None,
+            request_filter,
+            get_field_serializer_or_none(serializer, column_name),
+        )
 
     res_query = parent_query
-    if 'filter' in args:
-        filters = json.loads(args['filter'])
+    if "filter" in args:
+        filters = json.loads(args["filter"])
         for attr, value in filters.items():
-            res_query = res_query.filter(build_filter_operator(attr, value, model_serializer))
-    if 'order_by' in args:
-        fields = args['order_by'].split(',')
+            res_query = res_query.filter(
+                build_filter_operator(attr, value, model_serializer)
+            )
+    if "order_by" in args:
+        fields = args["order_by"].split(",")
         for field in fields:
-            field_name = field.lstrip('-')
+            field_name = field.lstrip("-")
             column = getattr(model_class, field_name)
-            if field[0] == '-':
+            if field[0] == "-":
                 column = desc(column)
             res_query = res_query.order_by(column)
     # limit and pagination have to be done after order_by
-    if 'limit' in args:
-        limit = args['limit']
+    if "limit" in args:
+        limit = args["limit"]
         res_query = res_query.limit(limit)
 
     return res_query
@@ -66,25 +82,25 @@ def create_collection_query(parent_query, model_class, model_serializer, args):
 
 # Filter operators defined on SQLAlchemy ColumnElement
 SQLA_OPERATORS = {
-    'like': 'like',
-    'notlike': 'notlike',
-    'ilike': 'ilike',
-    'notilike': 'notilike',
-    'is': 'is_',
-    'isnot': 'isnot',
-    'match': 'match',
-    'startswith': 'startswith',
-    'endswith': 'endswith',
-    'contains': 'contains',
-    'in': 'in_',
-    'notin': 'notin_',
-    'between': 'between',
-    'eq': '__eq__',
-    'ne': '__ne__',
-    'gt': '__gt__',
-    'ge': '__ge__',
-    'lt': '__lt__',
-    'le': '__le__',
+    "like": "like",
+    "notlike": "notlike",
+    "ilike": "ilike",
+    "notilike": "notilike",
+    "is": "is_",
+    "isnot": "isnot",
+    "match": "match",
+    "startswith": "startswith",
+    "endswith": "endswith",
+    "contains": "contains",
+    "in": "in_",
+    "notin": "notin_",
+    "between": "between",
+    "eq": "__eq__",
+    "ne": "__ne__",
+    "gt": "__gt__",
+    "ge": "__ge__",
+    "lt": "__lt__",
+    "le": "__le__",
 }
 
 
@@ -116,11 +132,13 @@ def get_operator(column, op_name, value, serializer):
         return column.operate(operator.eq, parse_value(value, serializer))
     elif op_name in SQLA_OPERATORS:
         op = SQLA_OPERATORS.get(op_name)
-        if op == 'between':
-            return column.between(parse_value(value[0], serializer), parse_value(value[1], serializer))
+        if op == "between":
+            return column.between(
+                parse_value(value[0], serializer), parse_value(value[1], serializer)
+            )
         return getattr(column, op)(parse_value(value, serializer))
     else:
-        raise ValueError('Unknown operator {}'.format(op_name))
+        raise ValueError(f"Unknown operator {op_name}")
 
 
 def get_field_serializer_or_none(serializer, field_name):

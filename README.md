@@ -2,9 +2,10 @@
 
 [![travis-ci](https://api.travis-ci.org/ESSS/flask-restalchemy.svg?branch=master)](https://travis-ci.org/ESSS/flask-restalchemy)
 [![codecov](https://codecov.io/gh/ESSS/flask-restalchemy/branch/master/graph/badge.svg)](https://codecov.io/gh/ESSS/flask-restalchemy)
+[![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
-A Flask extension to build REST APIs. It dismiss the need of building *Schema* classes, 
+A Flask extension to build REST APIs. It dismiss the need of building *Schema* classes,
 since usually all the information needed to serialize an SQLAlchemy instance is in the model
 itself.
 
@@ -20,20 +21,20 @@ class User(Base):
     lastname = Column(String)
     email = Column(String)
     password = Column(String)
-    
+
 
 api = Api(flask_app)
 api.add_model(User, '/user')
 ```
 
-To change the way properties are serialized, declare only the one that needs a non-default 
+To change the way properties are serialized, declare only the one that needs a non-default
 behaviour:
 
 ```python
 from flask_rest_orm import ModelSerializer, Field
 
 class UserSerializer(ModelSerializer):
-        
+
     password = Field(load_only=True)
 
 
