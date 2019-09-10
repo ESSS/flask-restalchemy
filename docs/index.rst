@@ -37,6 +37,7 @@ Let's define a very simple *SQLAlchemy* model using `flask-sqlalchemy`_:
 
     db = SQLAlchemy()
 
+
     class Hero(db.Model):
         id = Column(Integer, primary_key=True)
         name = Column(String)
@@ -50,21 +51,23 @@ and use `Api.add_model` to expose a model through an endpoint:
     from flask import Flask
     from flask_restalchemy import Api
 
-    app = Flask('tour-of-heroes')
+    app = Flask("tour-of-heroes")
 
-    @app.route('/create_db', methods=['POST'])
+
+    @app.route("/create_db", methods=["POST"])
     def create_db():
         db.create_all()
-        return 'DB created'
+        return "DB created"
+
 
     # Set an SQLite in-memory database
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     db.init_app(app)  # Must be called before Api object creation
 
     api = Api(app)
-    api.add_model(Hero, '/heroes')
+    api.add_model(Hero, "/heroes")
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         app.run()
 
 `Api.add_model` creates methods GET and POST for the `Heroes` collection at  ``/heroes`` and methods GET, PUT and DELETE
@@ -94,8 +97,9 @@ Serializers could be used to override the default serialization of models:
 
         secret_name = Field(load_only=True)
 
+
     api = Api(app)
-    api.add_model(Hero, '/heroes', serializer_class=HeroSerializer)
+    api.add_model(Hero, "/heroes", serializer_class=HeroSerializer)
 
 In the above example, `secret_name` property will not be exposed on a GET, but can be updated in a PUT or POST.
 
