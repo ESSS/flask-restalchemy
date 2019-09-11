@@ -14,7 +14,7 @@ By adding a model to the API, all its properties will be exposed:
 ```python
 class User(Base):
 
-    __tablename__ = 'User'
+    __tablename__ = "User"
 
     id = Column(Integer, primary_key=True)
     firstname = Column(String)
@@ -24,7 +24,7 @@ class User(Base):
 
 
 api = Api(flask_app)
-api.add_model(User, '/user')
+api.add_model(User, "/user")
 ```
 
 To change the way properties are serialized, declare only the one that needs a non-default
@@ -33,13 +33,14 @@ behaviour:
 ```python
 from flask_rest_orm import ModelSerializer, Field
 
+
 class UserSerializer(ModelSerializer):
 
     password = Field(load_only=True)
 
 
 api = Api(flask_app)
-api.add_model(User, '/user', serializer_class=UserSerializer)
+api.add_model(User, "/user", serializer_class=UserSerializer)
 ```
 ### Creating a new release
 
