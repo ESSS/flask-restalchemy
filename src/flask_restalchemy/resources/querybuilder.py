@@ -105,14 +105,18 @@ SQLA_OPERATORS = {
 
 
 def parse_value(value, serializer):
+    session = None
+    if serializer and hasattr(serializer, 'model_class'):
+        session = serializer.model_class.query.session
+
     if not serializer:
         return value
     if isinstance(value, list):
         return [
-            serializer.load(item, serializer.model_class.query.session)
+            serializer.load(item, session)
             for item in value
         ]
-    return serializer.load(value, serializer.model_class.query.session)
+    return serializer.load(value, session)
 
 
 def get_operator(column, op_name, value, serializer):
