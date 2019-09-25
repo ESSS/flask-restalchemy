@@ -108,7 +108,10 @@ def parse_value(value, serializer):
     if not serializer:
         return value
     if isinstance(value, list):
-        return [serializer.load(item, serializer.model_class.query.session) for item in value]
+        return [
+            serializer.load(item, serializer.model_class.query.session)
+            for item in value
+        ]
     return serializer.load(value, serializer.model_class.query.session)
 
 
