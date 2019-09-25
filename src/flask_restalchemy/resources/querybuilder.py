@@ -108,8 +108,8 @@ def parse_value(value, serializer):
     if not serializer:
         return value
     if isinstance(value, list):
-        return [serializer.load(item) for item in value]
-    return serializer.load(value)
+        return [serializer.load(item, serializer.model_class.query.session) for item in value]
+    return serializer.load(value, serializer.model_class.query.session)
 
 
 def get_operator(column, op_name, value, serializer):
