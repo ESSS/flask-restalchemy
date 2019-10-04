@@ -42,32 +42,17 @@ class UserSerializer(ModelSerializer):
 api = Api(flask_app)
 api.add_model(User, "/user", serializer_class=UserSerializer)
 ```
-### Creating a new release
 
-We are using [rever](https://github.com/regro/rever) to release new versions of the package. Rever
-automatically create project tags on GitHub, build and upload the PyPI package and change the recipe
-on conda-forge. Just type:
+### Release
+A reminder for the maintainers on how to make a new release.
 
-For each PR, you must update the CHANGELOG using the `news` folder. See [Changelog] section of
-Rever Developer's Guide on how to add a CHANGELOG entry.
+Note that the VERSION should folow the semantic versioning as X.Y.Z
+Ex.: v1.0.5
 
-```
-rever setup  # (first time only)
-
-rever <version>  # In the format 0.0.0
-```
-
-Some preconditions:
-
-* flask-restalchemy-feedstock must be forked under your github account
-* Repository remote must be set using SSH protocol
-* PyPI config file `.pypirc` must be on $HOME with the following parameters:
-```
-[pypi]
-username = <username>
-
-[distutils]
-index-servers = pypi
-```
+1. Create a ``release-VERSION`` branch from ``upstream/master``.
+2. Update ``CHANGELOG.rst``.
+3. Push a branch with the changes.
+4. Once all builds pass, push a ``VERSION`` tag to ``upstream``.
+5. Merge the PR.
 
 [Changelog]: https://regro.github.io/rever-docs/devguide.html#changelog
