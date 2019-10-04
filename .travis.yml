@@ -34,14 +34,13 @@ jobs:
     deploy:
       provider: pypi
       distributions: sdist bdist_wheel
-      user: icandeia
+      user: loliveira
       password:
-        secure: TFY6BPJYJsWpoBf1hzZ2F/UpJTA69SSk0o5Abw5XKzAhbljAkb+gVoX5+GKxmYc+G1CmqK7bU0uAEL2XuejJ5cg1bZt6oiOSSqZQwXc81ylFOnThmzHuM66VFdnoSDhy5nV2rntyHOWMvhy0sTyBNQ2YGjSMAz1kTBfquGtAoOSfirhKHuOE8FtIEIxO+WHjg4irm3Enc8xYxuKuz2mFvjbWMJdWsdPZ7tGIWzGTFiDYEA738mPR2PZFzOH3Njz6daItlPVL+EswrMWkLeT1AImgmaHvII6VY4LbRUadCJz1hRd9/UGiX5pjlcmHzWkafjctHJTTe4OD+Kv1ab6sPFeKKPhMgnRN3EZfbY7zqldxByrEkifkUa+GBVZCgh3N1UGyE6FoCL96STB9JGflAIYzT0SrarDF/M4BrVqqhVLo6BUz6HY8mjkNfLREpHIxmQw3siWSedSm6bn/AptQExn7ZH95aw5Bwok8mbHN/innkIrpyaDfCeZcBb6WrraMudvkfgm0tJrLqQ5oGxfCVOHOtq4ESoInRvdxVqH0whGqoQHS0PqSRjfYZz+vTEdzTU6t0UIyKSTVF0K+IhmtM5mCB2JJWMOcORAW4sNa5Kq6wgQ9AD/OHXG4X0CtkXVW7xmwcDfsjZ3N1wVFHcn01QvAWF9qJklsfuUiNbTV0DY=
+        secure: jowSR9tknuqoU0mQiB+xLWdg14SbdqdlI9eoPO0kgjF1NxrGGNUBwfETxjfez0WbNu25QCdd8BA6IkokyyjoN1Spp40n5SJpCKQzmSYFauNAQUIea68IIsBHGbZU85E+5sb1exqV1/A7f2XnjiEkako9z2twNcLEMfSTxjItxJLGOWLoPK9q61s3k43PQarZk5FcCRfDqd6gg1IWaJxgkAzXqSGsSVBD6131P6CfHGZBX93rjXaCcw0TsZs6o7nQ9xYMSd3K9/7uNqeeiRrsHoqYLWNx45k+vtboNxIiONDgtdgqF1ED/+u7259nfdg2kab77guJhZgGiBMmoBfCuBG9EWsjxD/8UbZXK78XpwgDMurgNpE7i02Rsl2N0ttkYjo0ei87du037WLfbp/DkcAgo65LJERrUxeB7DY0jv8SLciZ8yBCgkHZgLepXW55eO+jBbXjHDEs6SnCHBgZN2gTv0Ab71B5kkslL/dq43+Po/ZMPVCPvEwcEfGBgNQf1oPDJI523umZUkRLc/KF3sYG43G6Co7v4+EvVAXP7enW/gpdgxJRpD0phM25l0jJ+lB93iNud9lXO3unXjxkHImx0tKjz7Sbc9KOCxg/0EYNgMqe5SaVcrDhfMnsy1mH7UaLLT8YFnPJn/SH4gO358DRZe32+FrIiz/dBmffqkM=
       on:
         tags: true
         repo: ESSS/flask-restalchemy
         python: 3.6
-
 branches:
   only:
   - master
