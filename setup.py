@@ -23,7 +23,7 @@ extras_require = {
 setup(
     name="flask-restalchemy",
     use_scm_version=True,
-    setup_requires=['setuptools_scm'],
+    setup_requires=["setuptools_scm"],
     packages=find_packages("src"),
     package_dir={"": "src"},
     package_data={"": ["**/*.yml"]},
