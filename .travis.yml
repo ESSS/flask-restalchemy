@@ -2,6 +2,8 @@ language: python
 
 stages:
 - test
+- name: deploy
+  if: repo = ESSS/flask-restalchemy AND tag IS present
 
 install:
 - pip install -U pip
@@ -12,19 +14,34 @@ script:
 
 jobs:
   include:
-    - python: '3.6'
-      env: TOXENV=docs
+  - python: '3.6'
+    env: TOXENV=docs
 
-    - python: '3.7'
-      env: TOXENV=py37
+  - python: '3.7'
+    env: TOXENV=py37
 
-    - python: '3.6'
-      env: TOXENV=py36
+  - python: '3.6'
+    env: TOXENV=py36
 
-    - python: '3.7'
-      env: TOXENV=linting
+  - python: '3.7'
+    env: TOXENV=linting
 
+  - stage: deploy
+    python: '3.6'
+    env:
+    install: pip install -U setuptools setuptools_scm
+    script: skip
+    deploy:
+      provider: pypi
+      distributions: sdist bdist_wheel
+      user: "__token__"
+      password:
+        secure: "Pl4xzUKb0zGB4P6386wjk5l0w47DFIuC190FSpm05Ssz8y2B6JSXpz/HTxMDfXA0A5CGOtv9Jj2gW4GphFmpJY9cul9WGvC10Ja/RmUcgrPlZIeqJW0fy5u+EMpQROYsroDG3cai1P9U8Q54/WkFQVwOnGmWczZGjdP5RAKfOyniWOwX5LI7QQ96F2WhhQYxj4XtDS18ev3FKtLAA15xEkHpnjhgOgjqdfzTvL5CZV2yhW1S8BNvYd9cffRes6dHjLyz1PbDenb3bRkRzVvnDrjVkdAiLkuBmyT/M7WchKoCspDlVtdYFgV8iGrHHTJJctZMvYXuBrRL1xt2MvXJGqXCbghAXbOJGn2XDEner9YJAmvPp61MzjShI3Kjsb5r9JbUV4IJWNgi2mEVqVrjr53Db44AK5hCK7IRoaERblXrEp37IO80O6WFddQmtc7atg7GAQ3nImrC6VtUdScf5pMftWyM3iG0x/Nwy1Fm3QgtW/Z2+aVV7f61gN+kJjoMIyh0R5m9loKBBSguJVGHsIdUFb0lefGrtwwtGNXeU0gHOXddwT+LeA5KKFejC1YD896hmqMsA6OdoVh8OHr3XuMoewEZp7ZWXLZaAQEVKrkmSmnxAaTS0E3geGImU4ALD85J/VfFdJwmCpVRQm/xsx4x02ZFL6RizpbF/bG/N3Y="
+      on:
+        tags: true
+        repo: ESSS/flask-restalchemy
+        python: 3.6
 branches:
   only:
   - master
-  - "/v(\\d+\\.)*\\d/"
+  - "/^v(\\d+\\.)*\\d/"
