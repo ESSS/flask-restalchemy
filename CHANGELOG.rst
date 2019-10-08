@@ -8,18 +8,18 @@ Flask-RESTAlchemy Change Log
 v0.13.0
 ====================
 
-**Changed**
+**Changed:**
 
 * Removed flask-restful dependency
 
-**Added**
+**Added:**
 
 * Added support for request decorators
 * Added new field NestedModelListField
 * Added support for free functions rules
 * Added a way to specify the http methods available on an endpoint
 
-**Fixed**
+**Fixed:**
 
 * Fix bug that was removing target objects when undoing a relationship
 * Fix bug that was causing the session not be passed to the serializers
