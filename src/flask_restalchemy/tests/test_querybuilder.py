@@ -38,7 +38,6 @@ def test_order(client):
     assert data_list[1]["name"] == "vanessa"
 
 
-
 def test_filter(client):
     response = client.get("/company")
     data_list = response.get_json()
