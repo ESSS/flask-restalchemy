@@ -154,5 +154,5 @@ CLIENTS = [
     ("Coretta", "furcated"),
     ("Laverna", "mastaba"),
     ("abe", "abesee"),
-    ("vanessa", "vans")
+    ("vanessa", "vans"),
 ]
