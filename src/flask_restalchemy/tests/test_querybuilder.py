@@ -29,12 +29,14 @@ def init_test_data(flask_app, db_session):
 def test_order(client):
     response = client.get("/company?order_by=name")
     data_list = response.get_json()
-    assert data_list[0]["name"] == "Alvin"
+    assert data_list[0]["name"] == "abe"
     assert data_list[-1]["name"] == "Von"
 
     response = client.get("/company?order_by=-name")
     data_list = response.get_json()
     assert data_list[0]["name"] == "Von"
+    assert data_list[1]["name"] == "vanessa"
+
 
 
 def test_filter(client):
@@ -151,4 +153,6 @@ CLIENTS = [
     ("Julius", "alcmene"),
     ("Coretta", "furcated"),
     ("Laverna", "mastaba"),
+    ("abe", "abesee"),
+    ("vanessa", "vans")
 ]
