@@ -4,6 +4,7 @@ import operator
 
 CASE_INSENSITIVE_ORDER_BY_ENABLED = True
 
+
 def create_collection_query(parent_query, model_class, model_serializer, args):
     """
         Build a query using query parameters in the http URL, disposed on the request args.
