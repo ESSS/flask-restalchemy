@@ -1,6 +1,8 @@
-from sqlalchemy import desc, or_, and_
+from sqlalchemy import desc, or_, and_, func
 import json
 import operator
+
+CASE_INSENSITIVE_ORDER_BY_ENABLED = True
 
 
 def create_collection_query(parent_query, model_class, model_serializer, args):
@@ -69,6 +71,8 @@ def create_collection_query(parent_query, model_class, model_serializer, args):
         for field in fields:
             field_name = field.lstrip("-")
             column = getattr(model_class, field_name)
+            if CASE_INSENSITIVE_ORDER_BY_ENABLED and str(column.type) == "VARCHAR":
+                column = func.lower(column)
             if field[0] == "-":
                 column = desc(column)
             res_query = res_query.order_by(column)

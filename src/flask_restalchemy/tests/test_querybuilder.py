@@ -29,18 +29,19 @@ def init_test_data(flask_app, db_session):
 def test_order(client):
     response = client.get("/company?order_by=name")
     data_list = response.get_json()
-    assert data_list[0]["name"] == "Alvin"
+    assert data_list[0]["name"] == "abe"
     assert data_list[-1]["name"] == "Von"
 
     response = client.get("/company?order_by=-name")
     data_list = response.get_json()
     assert data_list[0]["name"] == "Von"
+    assert data_list[1]["name"] == "vanessa"
 
 
 def test_filter(client):
     response = client.get("/company")
     data_list = response.get_json()
-    assert len(data_list) == 20
+    assert len(data_list) == 22
 
     response = client.get("/company?limit=5")
     data_list = response.get_json()
@@ -71,7 +72,7 @@ def test_filter(client):
 
     response = client.get('/company?filter={"name": {"endswith": "a"} }')
     data_list = response.get_json()
-    assert len(data_list) == 6
+    assert len(data_list) == 7
 
     response = client.get('/company?limit=2&filter={"name": {"endswith": "a"} }')
     data_list = response.get_json()
@@ -92,7 +93,7 @@ def test_filter(client):
 def test_pagination(client):
     response = client.get("/company?page=1&per_page=50")
     data_list = response.get_json()
-    assert len(data_list.get("results")) == 20
+    assert len(data_list.get("results")) == 22
 
     response = client.get("/company?page=1&per_page=5")
     data_list = response.get_json()
@@ -100,7 +101,7 @@ def test_pagination(client):
 
     response = client.get("/company?page=4&per_page=6")
     data_list = response.get_json()
-    assert len(data_list.get("results")) == 2
+    assert len(data_list.get("results")) == 4
 
 
 def test_relations_pagination(client):
@@ -151,4 +152,6 @@ CLIENTS = [
     ("Julius", "alcmene"),
     ("Coretta", "furcated"),
     ("Laverna", "mastaba"),
+    ("abe", "abesee"),
+    ("vanessa", "vans"),
 ]
