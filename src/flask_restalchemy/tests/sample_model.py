@@ -76,7 +76,7 @@ class Employee(Base):
     )
     address_id = Column(ForeignKey("Address.id"))
     address = relationship(Address)
-    city = association_proxy('address', 'city')
+    city = association_proxy("address", "city")
     departments = relationship(
         "Department", secondary="employee_department", lazy="dynamic"
     )

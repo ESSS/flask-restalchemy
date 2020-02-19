@@ -72,6 +72,7 @@ def create_collection_query(parent_query, model_class, model_serializer, args):
         for field in fields:
             field_name = field.lstrip("-")
             column = getattr(model_class, field_name)
+            # Join with the associated table and define column as the associated property to support sorting
             if isinstance(column, AssociationProxyInstance):
                 res_query = res_query.outerjoin(column.target_class)
                 column = column.remote_attr
