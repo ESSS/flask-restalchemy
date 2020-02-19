@@ -3,6 +3,7 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, select, Table
 from sqlalchemy.orm import column_property, object_session
+from sqlalchemy.ext.associationproxy import association_proxy
 
 db = SQLAlchemy()
 Base = db.Model
@@ -75,6 +76,7 @@ class Employee(Base):
     )
     address_id = Column(ForeignKey("Address.id"))
     address = relationship(Address)
+    city = association_proxy("address", "city")
     departments = relationship(
         "Department", secondary="employee_department", lazy="dynamic"
     )

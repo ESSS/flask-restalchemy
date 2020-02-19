@@ -38,6 +38,48 @@ def test_order(client):
     assert data_list[1]["name"] == "vanessa"
 
 
+def test_order_by_relation(client, db_session):
+    company = Company(name="Headquarters", location="Metropolis")
+    db_session.add(company)
+    db_session.flush()
+
+    address_1 = Address(city="Gotham")
+    address_2 = Address(city="Wakanda")
+    address_3 = Address(city="Asgard")
+    db_session.add(address_1)
+    db_session.add(address_2)
+    db_session.add(address_3)
+    db_session.flush()
+
+    employee_1 = Employee(firstname="Batman", company_id=company.id, address=address_1)
+    employee_2 = Employee(firstname="Tchala", company_id=company.id, address=address_2)
+    employee_3 = Employee(firstname="Thor", company_id=company.id, address=address_3)
+
+    db_session.add(employee_1)
+    db_session.add(employee_2)
+    db_session.add(employee_3)
+    db_session.commit()
+
+    response = client.get(f"/company/{company.id}/employees")
+    data_list = response.json
+    assert len(data_list) == 3
+    assert data_list[0]["address"]["city"] == "Gotham"
+    assert data_list[1]["address"]["city"] == "Wakanda"
+    assert data_list[2]["address"]["city"] == "Asgard"
+
+    response = client.get(f"/company/{company.id}/employees?order_by=city")
+    data_list = response.json
+    assert data_list[0]["address"]["city"] == "Asgard"
+    assert data_list[1]["address"]["city"] == "Gotham"
+    assert data_list[2]["address"]["city"] == "Wakanda"
+
+    response = client.get(f"/company/{company.id}/employees?order_by=-city")
+    data_list = response.json
+    assert data_list[0]["address"]["city"] == "Wakanda"
+    assert data_list[1]["address"]["city"] == "Gotham"
+    assert data_list[2]["address"]["city"] == "Asgard"
+
+
 def test_filter(client):
     response = client.get("/company")
     data_list = response.get_json()
