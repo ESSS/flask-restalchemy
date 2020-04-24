@@ -293,6 +293,7 @@ class ToManyRelationResource(BaseModelResource):
         related_obj = session.query(self._related_model).get(relation_id)
         collection = getattr(related_obj, self._relation_property.key)
         collection.remove(requested_obj)
+        session.delete(requested_obj)
         session.commit()
         return "", 204
 

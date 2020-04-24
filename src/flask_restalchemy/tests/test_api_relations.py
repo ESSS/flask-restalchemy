@@ -96,8 +96,8 @@ def test_delete_item(client):
     resp = client.delete("/company/3/employees/9")
     assert resp.status_code == 204
     assert [emp.firstname for emp in company.employees] == ["Sarah"]
-    # Make sure that delete just drop the relation, and do not delete the target objects itself
-    assert Employee.query.filter_by(firstname="Jim").first()
+
+    assert Employee.query.filter_by(firstname="Jim").first() is None
 
     assert client.delete("/company/5/employees/999").status_code == 404
 
