@@ -5,5 +5,4 @@ from serialchemy import (
     NestedModelField,
     NestedModelListField,
 )
-from serialchemy import ColumnSerializer
-from .model_serializer import ModelSerializer
+from serialchemy import ColumnSerializer, ModelSerializer
