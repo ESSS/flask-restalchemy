@@ -22,7 +22,9 @@ extras_require = {
 
 setup(
     name="flask-restalchemy",
-    use_scm_version=True,
+    use_scm_version={
+        "git_describe_command": "git describe --dirty --tags --long --match v*"
+    },
     setup_requires=["setuptools_scm"],
     packages=find_packages("src"),
     package_dir={"": "src"},
