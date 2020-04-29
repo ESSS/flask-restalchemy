@@ -95,30 +95,16 @@ class BaseModelResource(BaseResource):
         self._session_getter = session_getter
         self._query_modifier = query_modifier
 
-    def _save_model(self, model, method):
+    def _save_model(self, model):
         session = self._session_getter()
         session.add(model)
-        # run pre commit hooks
-        if method == "POST":
-            self._serializer.before_post_commit(model, session)
-        elif method == "PUT":
-            self._serializer.before_put_commit(model, session)
-
         session.commit()
-
-        # run post commit hooks
-        if method == "POST":
-            self._serializer.after_post_commit(model, session)
-        elif method == "PUT":
-            self._serializer.after_put_commit(model, session)
 
     def _save_serialized(self, serialized_data, existing_model=None):
         model = self._serializer.load(
             serialized_data, existing_model, self._session_getter()
         )
-
-        method = "PUT" if existing_model else "POST"
-        self._save_model(model, method)
+        self._save_model(model)
         return self._serializer.dump(model)
 
     @property
@@ -271,7 +257,7 @@ class ToManyRelationResource(BaseModelResource):
             status_code = 201
             session.add(model)
         collection.append(model)
-        self._save_model(model, "POST")
+        self._save_model(model)
         saved = self._serializer.dump(model)
         return saved, status_code
 
