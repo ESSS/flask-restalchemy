@@ -9,6 +9,3 @@ API Reference
    resources
    query_builder
    decorators
-
-
-
