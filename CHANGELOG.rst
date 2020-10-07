@@ -4,6 +4,13 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.14.0
+====================
+
+**Added:**
+
+* Added api decorator 'route' to register a url rule
+
 
 v0.13.0
 ====================
