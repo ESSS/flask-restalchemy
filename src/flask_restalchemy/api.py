@@ -268,9 +268,8 @@ class Api:
                 return 'Hello World'
 
         :param rule: the URL rule as string
-        :param endpoint: the endpoint for the registered URL rule.  Flask
-                         itself assumes the name of the view function as
-                         endpoint
+        :param endpoint: the endpoint for the registered URL rule.
+                         Uses the name of the view function by default
         :param kwargs: the options to be forwarded to the underlying
                         :meth:`add_url_rule`.
         """
