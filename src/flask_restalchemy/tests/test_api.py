@@ -140,6 +140,23 @@ def test_url_rule(flask_app, client):
     assert resp.data == b"hello zeratul"
 
 
+def test_route(flask_app, client):
+
+    api = Api(flask_app)
+
+    @api.route("/hello/<string:name>")
+    def hello_world(name):
+        return f"hello {name}"
+
+    resp = client.get("/hello/raynor")
+    assert resp.status_code == 200
+    assert resp.data == b"hello raynor"
+
+    resp = client.post("/hello/kerrigan")
+    assert resp.status_code == 200
+    assert resp.data == b"hello kerrigan"
+
+
 @pytest.mark.parametrize(
     "methods",
     [

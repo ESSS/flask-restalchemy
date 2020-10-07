@@ -257,6 +257,30 @@ class Api:
                     f"{url}/<{pk_type}:{pk}>", view_func=view_func, methods=methods
                 )
 
+    def route(self, rule, endpoint=None, **kwargs):
+        """
+        A decorator that is used to register a view function for a
+        given URL rule.  This does the same thing as :meth:`add_url_rule`
+        but is intended for decorator usage::
+
+            @api.route('/')
+            def index():
+                return 'Hello World'
+
+        :param rule: the URL rule as string
+        :param endpoint: the endpoint for the registered URL rule.
+                         Uses the name of the view function by default
+        :param kwargs: the options to be forwarded to the underlying
+                        :meth:`add_url_rule`.
+        """
+
+        def decorator(f):
+            rule_endpoint = endpoint or f.__name__
+            self.add_url_rule(rule, rule_endpoint, f, **kwargs)
+            return f
+
+        return decorator
+
     def add_url_rule(
         self, rule, endpoint, view_func, methods=None, request_decorators=()
     ):
