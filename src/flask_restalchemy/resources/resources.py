@@ -10,6 +10,11 @@ from .querybuilder import create_collection_query
 
 
 class BaseResource(MethodView):
+    """The Base class for resources
+
+    :param dict|list request_decorators: a list of decorators
+    """
+
     def __init__(self, request_decorators=None):
         if not request_decorators:
             return
@@ -61,6 +66,22 @@ class ViewFunctionResource(BaseResource):
 
 
 class BaseModelResource(BaseResource):
+    """The Base class for ORM resources
+
+    :param class declarative_model: the SQLAlchemy declarative class.
+
+    :param ModelSerializer serializer: schema for serialization. If `None`, a default serializer will be created.
+
+    :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
+        DB session may not be available on the resource initialization.
+
+    :param callable query_modifier: function that returns a query and expects a `model` as parameter that
+        should be used to create the query and expects a `parent_query` to be incremented with the callback query
+        function. The method signature should look like this: query_callback(parent_query, resource_model)
+
+    :param dict|list request_decorators: a list of decorators
+    """
+
     def __init__(
         self,
         declarative_model,
@@ -69,22 +90,9 @@ class BaseModelResource(BaseResource):
         query_modifier=None,
         request_decorators=None,
     ):
+        """Constructor
         """
-        The Base class for ORM resources
 
-        :param class declarative_model: the SQLAlchemy declarative class.
-
-        :param ModelSerializer serializer: schema for serialization. If `None`, a default serializer will be created.
-
-        :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
-            DB session may not be available on the resource initialization.
-
-        :param callable query_modifier: function that returns a query and expects a `model` as parameter that
-            should be used to create the query and expects a `parent_query` to be incremented with the callback query
-            function. The method signature should look like this: query_callback(parent_query, resource_model)
-
-        :param dict|list request_decorators: a list of decorators
-        """
         super().__init__(request_decorators)
         self._resource_model = declarative_model
         self._serializer = serializer
@@ -157,10 +165,22 @@ class ModelResource(BaseModelResource):
 
 
 class ToManyRelationResource(BaseModelResource):
-    """
-    flask-restful resource class that receives two SQLAlchemy models, a parent model and a child model,
-    and define the API to provide LIST and CREATE over data of the child model associated with a specific
+    """Resource class that receives an SQLAlchemy relationship define the API to provide
+    LIST and CREATE over data of the child model associated with a specific
     element of the parent model.
+
+    :param relationship relation_property: the SQLAlchemy relationship.
+
+    :param ModelSerializer serializer: schema for serialization. If `None`, a default serializer will be created.
+
+    :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
+        DB session may not be available on the resource initialization.
+
+    :param callable query_modifier: function that returns a query and expects a `model` as parameter that
+        should be used to create the query and expects a `parent_query` to be incremented with the callback query
+        function. The method signature should look like this: query_callback(parent_query, resource_model)
+
+    :param dict|list request_decorators: a list of decorators
     """
 
     def __init__(
@@ -171,21 +191,7 @@ class ToManyRelationResource(BaseModelResource):
         query_modifier=None,
         request_decorators=None,
     ):
-        """
-        The Base class for ORM resources
-
-        :param class declarative_model: the SQLAlchemy declarative class.
-
-        :param ModelSchema serializer: Marshmallow schema for serialization. If `None`, a default serializer will be
-            created.
-
-        :param callable session_getter: a callable that returns the DB session. A callable is used since a reference to
-            DB session may not be available on the resource initialization.
-
-        :param callable query_modifier: function that returns a query and expects a `model` as parameter that
-            should be used to create the query and expects a `parent_query` to be incremented with the callback query
-            function. The method signature should look like this: query_callback(parent_query, resource_model)
-
+        """Constructor
         """
         resource_model = relation_property.prop.mapper.class_
         super().__init__(

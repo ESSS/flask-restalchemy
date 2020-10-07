@@ -13,12 +13,14 @@ from .resources.resources import (
 
 
 class Api:
-    def __init__(self, blueprint=None, request_decorators=None):
-        """
-        :param (Flask|Blueprint) blueprint: Flask application or Blueprint
+    """
+    :param (Flask|Blueprint) blueprint: Flask application or Blueprint
 
-        :param callable request_decorators: request decorators for this API object (see
-            Flask-Restful decorators docs for more information)
+    :param callable request_decorators: request decorators for this API object (see
+        Flask-Restful decorators docs for more information)
+    """
+    def __init__(self, blueprint=None, request_decorators=None):
+        """Constructor
         """
         # noinspection PyPackageRequirements
         self.default_mediatype = "application/json"
