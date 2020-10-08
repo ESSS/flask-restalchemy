@@ -3,6 +3,8 @@
 __pycache__/
 .*cache
 *.egg-info
+*.eggs
+docs/_build/
 .~*
 *$py.class
 build/
