@@ -4,7 +4,7 @@ install_requires = [
     "flask-sqlalchemy >= 2.3.0",
     "sqlalchemy_utils>=0.30",
     "flask>=1.0.0",
-    "sqlalchemy>=1.3",
+    "sqlalchemy>=1.3,<2",
     "serialchemy>=0.3.0",
 ]
 
