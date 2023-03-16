@@ -1,6 +1,6 @@
 # Flask-RESTAlchemy #
 
-[![travis-ci](https://api.travis-ci.org/ESSS/flask-restalchemy.svg?branch=master)](https://travis-ci.org/ESSS/flask-restalchemy)
+[![build](https://github.com/ESSS/serialchemy/workflows/build/badge.svg)](https://github.com/ESSS/serialchemy/actions)
 [![codecov](https://codecov.io/gh/ESSS/flask-restalchemy/branch/master/graph/badge.svg)](https://codecov.io/gh/ESSS/flask-restalchemy)
 [![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![black](https://img.shields.io/readthedocs/flask-restalchemy.svg)](https://flask-restalchemy.readthedocs.io/en/latest)
@@ -31,7 +31,7 @@ To change the way properties are serialized, declare only the one that needs a n
 behaviour:
 
 ```python
-from flask_rest_orm import ModelSerializer, Field
+from serialchemy import ModelSerializer, Field
 
 
 class UserSerializer(ModelSerializer):
