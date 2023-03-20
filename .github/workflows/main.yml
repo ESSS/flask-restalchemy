@@ -1,6 +1,14 @@
 name: build
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+      - rb-*
+    tags:
+      - v*
+
+  pull_request:
 
 jobs:
   build:
@@ -28,4 +36,30 @@ jobs:
       - name: Upload codecov
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+
+  deploy:
+    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') && github.repository == 'ESSS/flask-restalchemy'
+
+    runs-on: ubuntu-20.04
+
+    needs: build
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.6"
+
+    - name: Build Package
+      run: |
+        python -m pip install --upgrade pip wheel setuptools
+        python setup.py sdist bdist_wheel
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_token }}
