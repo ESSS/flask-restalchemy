@@ -10,21 +10,12 @@ install_requires = [
 
 extras_require = {
     "docs": ["sphinx >= 1.4", "sphinx_rtd_theme"],
-    "testing": [
-        "codecov",
-        "pytest",
-        "pytest-cov",
-        "pytest-mock",
-        "pytest-regressions",
-        "tox",
-    ],
+    "testing": ["codecov", "pytest", "pytest-cov", "pytest-mock", "pytest-regressions", "tox"],
 }
 
 setup(
     name="flask-restalchemy",
-    use_scm_version={
-        "git_describe_command": "git describe --dirty --tags --long --match v*"
-    },
+    use_scm_version={"git_describe_command": "git describe --dirty --tags --long --match v*"},
     setup_requires=["setuptools_scm"],
     packages=find_packages("src"),
     package_dir={"": "src"},
@@ -35,7 +26,7 @@ setup(
     author_email="foss@esss.co",
     description="Flask extension to build REST APIs based on SQLAlchemy models ",
     keywords="flask sqlalchemy orm",
-    data_files=[("", ["LICENSE"])],
+    license_files=('LICENSE',),
     install_requires=install_requires,
     extras_require=extras_require,
     python_requires=">=3.6",
