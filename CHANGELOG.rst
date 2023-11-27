@@ -4,6 +4,13 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.14.1
+====================
+
+**Fixed:**
+
+* Fix license placement on setup.py
+
 v0.14.0
 ====================
 
