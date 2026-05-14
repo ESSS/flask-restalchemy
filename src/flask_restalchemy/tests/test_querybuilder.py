@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 
 import pytest
 
@@ -132,6 +133,21 @@ def test_filter(client):
         )
 
 
+def test_filter_and(client):
+    response = client.get(
+        '/company?filter={"$and": {"name": "Alvin", "location": "genesis"}}'
+    )
+    data_list = response.get_json()
+    assert len(data_list) == 1
+    assert data_list[0]["name"] == "Alvin"
+
+
+def test_filter_between(client):
+    response = client.get('/company?filter={"id": {"between": [1, 3]}}')
+    data_list = response.get_json()
+    assert len(data_list) == 3
+
+
 def test_pagination(client):
     response = client.get("/company?page=1&per_page=50")
     data_list = response.get_json()
@@ -148,7 +164,7 @@ def test_pagination(client):
 
 def test_relations_pagination(client):
     response = client.post("/company", data={"name": "Terrans 1"})
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     company_id = response.get_json()["id"]
 
     for i in range(20):
@@ -161,14 +177,14 @@ def test_relations_pagination(client):
             company_id, json.dumps({"firstname": {"eq": "Jimmy 1"}})
         )
     )
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     data_list = response.get_json()
     assert len(data_list) == 1
     assert "firstname" in data_list[0]
     assert data_list[0]["firstname"] == "Jimmy 1"
 
     response = client.get(f"/company/{company_id}/employees?page=1&per_page=5")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     data_list = response.get_json()
     assert len(data_list.get("results")) == 5
 

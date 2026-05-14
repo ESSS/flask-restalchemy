@@ -1,13 +1,65 @@
 [build-system]
 requires = [
-  "setuptools>=45",
+  "setuptools>=64",
   "setuptools_scm[toml]>=6.2",
   "wheel",
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "flask-restalchemy"
+dynamic = ["version"]
+description = "Flask extension to build REST APIs based on SQLAlchemy models"
+readme = "README.md"
+authors = [{ name = "ESSS", email = "foss@esss.co" }]
+license = {text = "MIT"}
+requires-python = ">=3.8"
+keywords = ["flask", "sqlalchemy", "orm"]
+classifiers = [
+    "Environment :: Web Environment",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: Internet :: WWW/HTTP",
+]
+dependencies = [
+    "flask>=1.0.0",
+    "flask-sqlalchemy>=2.3.0",
+    "sqlalchemy>=1.4,<3",
+    "sqlalchemy-utils>=0.30",
+    "serialchemy>=0.3.0",
+]
+
+[project.optional-dependencies]
+docs = ["sphinx>=1.4", "sphinx-rtd-theme"]
+testing = ["codecov", "pytest", "pytest-cov", "pytest-mock", "pytest-regressions", "tox"]
+
+[dependency-groups]
+dev = ["pytest", "pytest-cov", "pytest-mock", "pytest-regressions", "tox"]
+
+[project.urls]
+Homepage = "https://github.com/ESSS/flask-restalchemy"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["**/*.yml"]
+
 [tool.setuptools_scm]
 git_describe_command = "git describe --dirty --tags --long --exclude RFDAP*"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error::sqlalchemy.exc.LegacyAPIWarning",
+]
 
 [tool.black]
 line-length = 100
