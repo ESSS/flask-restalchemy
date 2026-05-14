@@ -31,7 +31,7 @@ classifiers = [
 ]
 dependencies = [
     "flask>=1.0.0",
-    "flask-sqlalchemy>=2.3.0",
+    "flask-sqlalchemy>=3.0",
     "sqlalchemy>=1.4,<3",
     "sqlalchemy-utils>=0.30",
     "serialchemy>=0.3.0",

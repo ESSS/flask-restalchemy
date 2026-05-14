@@ -1,15 +1,21 @@
 from http import HTTPStatus
+
 import pytest
 from flask import json
 from sqlalchemy import select
-from flask_restalchemy.serialization import ModelSerializer, Field, NestedModelField
 
 from flask_restalchemy import Api
-from flask_restalchemy.tests.sample_model import Employee, Company, Department, Address, db
+from flask_restalchemy.serialization import Field, ModelSerializer, NestedModelField
+from flask_restalchemy.tests.sample_model import (
+    Address,
+    Company,
+    Department,
+    Employee,
+    db,
+)
 
 
 class EmployeeSerializer(ModelSerializer):
-
     password = Field(load_only=True)
     created_at = Field(dump_only=True)
     company_name = Field(dump_only=True)
@@ -87,7 +93,9 @@ def test_put_item(client):
     resp = client.put("/company/3/employees/3", data={"lastname": "K."})
     assert resp.status_code == HTTPStatus.OK
 
-    sarah = db.session.execute(select(Employee).where(Employee.firstname == "Sarah")).scalar_one()
+    sarah = db.session.execute(
+        select(Employee).where(Employee.firstname == "Sarah")
+    ).scalar_one()
     assert sarah.lastname == "K."
 
 
@@ -99,7 +107,10 @@ def test_delete_item(client):
     assert resp.status_code == HTTPStatus.NO_CONTENT
     assert [emp.firstname for emp in company.employees] == ["Sarah"]
 
-    assert db.session.execute(select(Employee).where(Employee.firstname == "Jim")).first() is None
+    assert (
+        db.session.execute(select(Employee).where(Employee.firstname == "Jim")).first()
+        is None
+    )
 
     assert client.delete("/company/5/employees/999").status_code == HTTPStatus.NOT_FOUND
 
@@ -178,7 +189,7 @@ def test_delete_on_relation_with_secondary(client):
     dep = jim.departments[0]
 
     sarah = db.session.get(Employee, 3)
-    assert jim is not None
+    assert sarah is not None
     assert dep not in sarah.departments
 
     resp = client.get("/employee/3/departments")

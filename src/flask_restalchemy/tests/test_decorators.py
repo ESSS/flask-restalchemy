@@ -58,7 +58,7 @@ def test_api_decorators(client, flask_app):
         client.post(
             "/company", data={"name": "Terran"}, headers={"auth": True}
         ).status_code
-        == 201
+        == HTTPStatus.CREATED
     )
     assert client.get("/company", headers={"auth": True}).status_code == HTTPStatus.OK
 

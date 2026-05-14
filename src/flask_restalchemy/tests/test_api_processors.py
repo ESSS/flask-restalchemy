@@ -121,7 +121,7 @@ def test_delete_preprocessors(sample_api, client, mocker):
     resp = client.delete("/employee/1")
     assert resp.status_code == HTTPStatus.NO_CONTENT
     assert pre_mock.call_args == call(id=1)
-    assert post_mock.call_args == call(("", 204), id=1)
+    assert post_mock.call_args == call(("", HTTPStatus.NO_CONTENT), id=1)
 
 
 def test_property_get_collection_processor(sample_api, client, mocker):
