@@ -1,3 +1,4 @@
+from http import HTTPStatus
 import pytest
 from flask import Blueprint
 from flask_restalchemy import Api
@@ -15,7 +16,7 @@ def blueprint(flask_app):
 
 def test_blueprint_api(client):
     resp = client.post("/bp/company", data={"name": "Mangsk Corp"})
-    assert resp.status_code == 201
+    assert resp.status_code == HTTPStatus.CREATED
 
     resp = client.post("/bp/company", data={"name": "Mangsk Corp"})
-    assert resp.status_code == 201
+    assert resp.status_code == HTTPStatus.CREATED

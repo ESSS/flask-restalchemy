@@ -2,14 +2,14 @@ from collections.abc import Mapping
 
 from flask import current_app
 
-from .serialization import ColumnSerializer, ModelSerializer
 from .resources.resources import (
-    ToManyRelationResource,
-    ModelResource,
-    CollectionPropertyResource,
     BaseResource,
+    CollectionPropertyResource,
+    ModelResource,
+    ToManyRelationResource,
     ViewFunctionResource,
 )
+from .serialization import ColumnSerializer, ModelSerializer
 
 
 class Api:
@@ -209,9 +209,9 @@ class Api:
         if resource_init_kwargs is None:
             resource_init_kwargs = {}
         else:
-            assert (
-                "request_decorators" not in resource_init_kwargs
-            ), "Use add_resource 'decorators' parameter"
+            assert "request_decorators" not in resource_init_kwargs, (
+                "Use add_resource 'decorators' parameter"
+            )
         resource_init_kwargs["request_decorators"] = self._create_decorators(decorators)
         view_func = resource_class.as_view(
             view_name, *resource_init_args, **resource_init_kwargs
@@ -332,15 +332,15 @@ class Api:
         return ModelSerializer(model_class)
 
     def get_db_session(self):
-        """ef register_view(self, view_func, url, pk='id', pk_type='int', methods=None):
-        Returns an SQLAlchemy object session. Used by flask-restful Resources to access
-        the database.
-        """
+        """Returns an SQLAlchemy session. Used by Resources to access the database."""
         if not self._db:
             # Get the Flask application
             flask_app = current_app
             assert flask_app and flask_app.extensions, "Flask App not initialized yet"
-            self._db = flask_app.extensions["sqlalchemy"].db
+            # Flask-SQLAlchemy 2.x stores _SQLAlchemyState with a .db attribute;
+            # 3.x stores the SQLAlchemy instance directly.
+            ext = flask_app.extensions["sqlalchemy"]
+            self._db = getattr(ext, "db", ext)
         return self._db.session
 
     @classmethod

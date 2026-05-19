@@ -1,7 +1,9 @@
 import warnings
+from http import HTTPStatus
 
 from flask import request, json, jsonify, Response
 from flask.views import MethodView
+from sqlalchemy import select
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm.collections import InstrumentedList
 
@@ -123,12 +125,12 @@ class BaseModelResource(BaseResource):
 class ModelResource(BaseModelResource):
     def get(self, id=None):
         if id is not None:
-            model = self._resource_model.query.get(id)
+            model = self._db_session.get(self._resource_model, id)
             if model is None:
-                return NOT_FOUND_ERROR, 404
+                return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
             return self._serializer.dump(model)
         else:
-            query = self._resource_model.query
+            query = self._db_session.query(self._resource_model)
             if self._query_modifier:
                 query = self._query_modifier(query, self._resource_model)
             query = create_collection_query(
@@ -140,12 +142,12 @@ class ModelResource(BaseModelResource):
     def post(self):
         serialized = load_request_json()
         saved = self._save_serialized(serialized)
-        return saved, 201
+        return saved, HTTPStatus.CREATED
 
     def put(self, id):
-        model = self._resource_model.query.get(id)
+        model = self._db_session.get(self._resource_model, id)
         if model is None:
-            return NOT_FOUND_ERROR, 404
+            return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
 
         serialized = self._serializer.dump(model)
         request_data = load_request_json()
@@ -154,14 +156,14 @@ class ModelResource(BaseModelResource):
         return result
 
     def delete(self, id):
-        model = self._resource_model.query.get(id)
+        model = self._db_session.get(self._resource_model, id)
         if model is None:
-            return NOT_FOUND_ERROR, 404
+            return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
         session = self._db_session
         session.delete(model)
         session.flush()
         session.commit()
-        return "", 204
+        return "", HTTPStatus.NO_CONTENT
 
 
 class ToManyRelationResource(BaseModelResource):
@@ -208,19 +210,18 @@ class ToManyRelationResource(BaseModelResource):
         if id:
             requested_obj = self._query_related_obj(relation_id, id)
             if not requested_obj:
-                return NOT_FOUND_ERROR, 404
-            return self._serializer.dump(requested_obj), 200
+                return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
+            return self._serializer.dump(requested_obj), HTTPStatus.OK
         else:
             session = self._db_session
-            # using options(load_only('id')) avoid unintended subquerying, as all we want is
-            # check if the element exists
-            related_obj = (
-                session.query(self._related_model)
-                .options(load_only("id"))
-                .get(relation_id)
+            # load_only avoids loading all columns when we only need to check existence
+            related_obj = session.get(
+                self._related_model,
+                relation_id,
+                options=[load_only(self._related_model.id)],
             )
             if related_obj is None:
-                return NOT_FOUND_ERROR, 404
+                return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
 
             # TODO: Is there a more efficient way than using getattr?
             relation_list_or_query = getattr(related_obj, self._relation_property.key)
@@ -228,7 +229,7 @@ class ToManyRelationResource(BaseModelResource):
                 relation_list_or_query, "paginate"
             ):
                 warnings.warn(
-                    "Warnning: relationship does not support pagination nor filter."
+                    "Warning: relationship does not support pagination nor filter."
                     'Use flask-sqlalchemy relationship with lazy="dynamic".'
                 )
                 collection = [
@@ -246,21 +247,21 @@ class ToManyRelationResource(BaseModelResource):
 
     def post(self, relation_id):
         session = self._db_session
-        related_obj = session.query(self._related_model).get(relation_id)
+        related_obj = session.get(self._related_model, relation_id)
         if not related_obj:
-            return NOT_FOUND_ERROR, 404
+            return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
         collection = getattr(related_obj, self._relation_property.key)
         data_dict = load_request_json()
         resource_id = data_dict.get("id", None)
 
         if resource_id is not None:
-            model = session.query(self._resource_model).get(resource_id)
+            model = session.get(self._resource_model, resource_id)
             if model is None:
-                return NOT_FOUND_ERROR, 404
-            status_code = 200
+                return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
+            status_code = HTTPStatus.OK
         else:
             model = self._serializer.load(data_dict, session=session)
-            status_code = 201
+            status_code = HTTPStatus.CREATED
             session.add(model)
         collection.append(model)
         self._save_model(model)
@@ -271,7 +272,7 @@ class ToManyRelationResource(BaseModelResource):
         request_data = load_request_json()
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
-            return NOT_FOUND_ERROR, 404
+            return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
         serialized = self._serializer.dump(requested_obj)
         serialized.update(request_data)
         saved = self._save_serialized(serialized, requested_obj)
@@ -281,13 +282,13 @@ class ToManyRelationResource(BaseModelResource):
         session = self._db_session
         requested_obj = self._query_related_obj(relation_id, id)
         if not requested_obj:
-            return NOT_FOUND_ERROR, 404
-        related_obj = session.query(self._related_model).get(relation_id)
+            return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
+        related_obj = session.get(self._related_model, relation_id)
         collection = getattr(related_obj, self._relation_property.key)
         collection.remove(requested_obj)
         session.delete(requested_obj)
         session.commit()
-        return "", 204
+        return "", HTTPStatus.NO_CONTENT
 
     def _query_related_obj(self, relation_id, id):
         """
@@ -299,20 +300,19 @@ class ToManyRelationResource(BaseModelResource):
         """
 
         # This checks if there is a parent with the related child on its relation property
-        related = (
-            self._db_session.query(self._related_model)
-            .options(load_only("id"))
-            .filter(
+        related = self._db_session.execute(
+            select(self._related_model)
+            .options(load_only(self._related_model.id))
+            .where(
                 self._related_model.id == relation_id,
                 self._relation_property.any(id=id),
             )
-            .one_or_none()
-        )
+        ).scalar_one_or_none()
 
         if related is None:
             return None
 
-        return self._db_session.query(self._resource_model).get(id)
+        return self._db_session.get(self._resource_model, id)
 
 
 class CollectionPropertyResource(ToManyRelationResource):
@@ -338,15 +338,15 @@ class CollectionPropertyResource(ToManyRelationResource):
 
     def get(self, relation_id, id=None):
         session = self._db_session
-        related_obj = session.query(self._related_model).get(relation_id)
+        related_obj = session.get(self._related_model, relation_id)
         if related_obj is None:
-            return NOT_FOUND_ERROR, 404
+            return NOT_FOUND_ERROR, HTTPStatus.NOT_FOUND
         relation_list_or_query = getattr(related_obj, self._property_name)
         if isinstance(relation_list_or_query, InstrumentedList) or not hasattr(
             relation_list_or_query, "paginate"
         ):
             warnings.warn(
-                "Warnning: property "
+                "Warning: property "
                 + self._property_name
                 + " does not support pagination nor filter."
                 " Use flask-sqlalchemy and make your property return a query object"
@@ -365,7 +365,7 @@ class CollectionPropertyResource(ToManyRelationResource):
         return collection
 
     def post(self, relation_id):
-        return "POST not allowed for property resources", 405
+        return "POST not allowed for property resources", HTTPStatus.METHOD_NOT_ALLOWED
 
 
 def load_request_json():
@@ -388,7 +388,7 @@ def unpack(value):
     :return:
     """
     if not isinstance(value, tuple):
-        return value, 200, {}
+        return value, HTTPStatus.OK, {}
 
     try:
         data, code, headers = value
@@ -402,7 +402,7 @@ def unpack(value):
     except ValueError:
         pass
 
-    return value, 200, {}
+    return value, HTTPStatus.OK, {}
 
 
 def create_response_from_query(query, serializer):

@@ -43,6 +43,28 @@ api = Api(flask_app)
 api.add_model(User, "/user", serializer_class=UserSerializer)
 ```
 
+### Development Setup
+
+Requires [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv python pin 3.10
+uv sync --group dev
+source .venv/bin/activate
+```
+
+If `serialchemy` is checked out as a sibling repository, install it as an editable dependency:
+
+```bash
+uv pip install -e ../serialchemy
+```
+
+Run the tests:
+
+```bash
+pytest src/flask_restalchemy/tests/
+```
+
 ### Release
 A reminder for the maintainers on how to make a new release.
 

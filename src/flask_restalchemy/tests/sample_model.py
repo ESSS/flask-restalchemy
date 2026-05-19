@@ -72,7 +72,7 @@ class Employee(Base):
     company_id = Column(ForeignKey("Company.id"))
     company = relationship(Company, back_populates="employees")
     company_name = column_property(
-        select([Company.name]).where(Company.id == company_id)
+        select(Company.name).where(Company.id == company_id).scalar_subquery()
     )
     address_id = Column(ForeignKey("Address.id"))
     address = relationship(Address)
