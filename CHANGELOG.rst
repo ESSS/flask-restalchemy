@@ -4,6 +4,27 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.15.0
+====================
+
+**Added:**
+
+* Added support for SQLAlchemy 2.x (alongside existing 1.4 support)
+* Added tests for the ``get_db_session`` helper covering both Flask-SQLAlchemy 2.x and 3.x
+
+**Changed:**
+
+* Migrated project metadata and dependency management from ``setup.cfg``/``setup.py`` to ``pyproject.toml`` with ``uv``
+* Replaced legacy ``Model.query.get()`` / ``session.query(Model).get()`` calls with ``session.get(Model, id)`` for SQLAlchemy 1.4/2.x compatibility
+* Fixed ``get_db_session()`` to work with both Flask-SQLAlchemy 2.x and 3.x
+* Replaced raw integer HTTP status codes with ``http.HTTPStatus`` enum in ``resources.py``
+* Updated tox configuration to test against both SQLAlchemy 1.4 and 2.x environments
+* Updated CI deploy step to use Python 3.12
+
+**Removed:**
+
+* Dropped support for Python 3.8 and 3.9
+
 v0.14.1
 ====================
 
