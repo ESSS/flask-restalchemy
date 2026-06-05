@@ -1,4 +1,4 @@
-from sqlalchemy import desc, or_, and_, func
+from sqlalchemy import desc, or_, and_, true, func
 import json
 import operator
 from sqlalchemy.ext.associationproxy import AssociationProxyInstance
@@ -36,15 +36,21 @@ def create_collection_query(parent_query, model_class, model_serializer, args):
 
     def build_filter_operator(column_name, request_filter, serializer):
         if column_name == "$or":
-            return or_(
+            clauses = [
                 build_filter_operator(attr, value, serializer)
                 for attr, value in request_filter.items()
-            )
+            ]
+            # SA 2.0: or_()/and_() no longer accept empty iterators.
+            # Empty $or matches nothing; empty $and matches everything.
+            # Empty $or behaves as no-op (true) to preserve SA 1.x behaviour
+            # where or_() with no clauses returned a truthy constant.
+            return or_(*clauses) if clauses else true()
         elif column_name == "$and":
-            return and_(
+            clauses = [
                 build_filter_operator(attr, value, serializer)
                 for attr, value in request_filter.items()
-            )
+            ]
+            return and_(*clauses) if clauses else true()
         if isinstance(request_filter, dict):
             op_name = next(iter(request_filter))
             return get_operator(
