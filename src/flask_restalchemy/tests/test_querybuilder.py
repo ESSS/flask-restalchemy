@@ -142,6 +142,26 @@ def test_filter_and(client):
     assert data_list[0]["name"] == "Alvin"
 
 
+def test_filter_empty_or_acts_as_noop(client):
+    """Empty $or should return all records (no-op), not raise or return nothing.
+
+    SA 2.0 removed support for or_()/and_() with empty iterators. This test
+    guards against regressions where an empty $or silently drops all results.
+    """
+    response = client.get('/company?filter={"$or": {}}')
+    assert response.status_code == HTTPStatus.OK
+    data_list = response.get_json()
+    assert len(data_list) == 22
+
+
+def test_filter_empty_and_acts_as_noop(client):
+    """Empty $and should return all records (no-op), not raise or return nothing."""
+    response = client.get('/company?filter={"$and": {}}')
+    assert response.status_code == HTTPStatus.OK
+    data_list = response.get_json()
+    assert len(data_list) == 22
+
+
 def test_filter_between(client):
     response = client.get('/company?filter={"id": {"between": [1, 3]}}')
     data_list = response.get_json()
