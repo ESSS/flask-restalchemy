@@ -4,6 +4,16 @@ Flask-RESTAlchemy Change Log
 
 .. current developments
 
+v0.15.1
+====================
+
+**Fixed:**
+
+* Fixed ``$or`` and ``$and`` filter operators to handle empty clause dictionaries
+  without raising an error under SQLAlchemy 2.x. Empty ``$or``/``$and`` now
+  behave as a no-op (return all records), matching the SQLAlchemy 1.x behaviour.
+
+
 v0.15.0
 ====================
 
