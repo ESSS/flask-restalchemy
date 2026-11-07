@@ -28,7 +28,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "flask>=1.0.0",
+    "flask>=2.3.2",
     "flask-sqlalchemy>=3.0",
     "sqlalchemy>=1.4,<3",
     "sqlalchemy-utils>=0.30",
